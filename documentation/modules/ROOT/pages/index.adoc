@@ -1,20 +1,35 @@
-= Welcome to Template Tutorial
+= Welcome to Troubleshooting Microservices Tutorial
 :page-layout: home
 :!sectids:
 
 [.text-center.strong]
-== Publish Services to Kubernetes
+== Troubleshooting  MicroServices deployed on Kubernetes
 
-A Kubernetes tutorial to show how you can deploy a Java service to a Kubernetes cluster as it was a child game.
+Learn how you can fix common issues that occur when running containerized applications, regardless if is on your own local (Minikube) or remote(Red Hat OpenShift Developer Sandbox) cluster.
 
 [.tiles.browse]
 == Browse modules
 
 [.tile]
-.xref:01-setup.adoc[Get Started]
-* xref:01-setup.adoc#minikube[Minikube]
+* xref:01-setup.adoc[1.Setup]
+** xref:01-setup.adoc#prerequisite[Prerequisites]
+** xref:01-setup.adoc#minikube[Setup Minikube]
+** xref:01-setup.adoc#proddbsetup[Setup the database for production]
 
 [.tile]
-.xref:02-deploy.adoc[Deploying]
-* xref:02-deploy.adoc#package[Package the Application]
-* xref:02-deploy.adoc#deploy[Deploy the Application]
+* xref:02-deploy.adoc[2.Troubleshooting Deployments]
+** xref:02-deploy.adoc#quarkusremotedev[Quarkus remote development]
+** xref:02-deploy.adoc#deploy[Deploy the microservice]
+** xref:02-deploy.adoc#imagepullbackoff[Fixing ImagePullBackOff]
+** xref:02-deploy.adoc#crashloopbackoff[Fixing CrashLoopBackOff]
+** xref:02-deploy.adoc#runcontainererror[Fixing CreateContainerConfigError]
+** xref:02-deploy.adoc#pending[Overcoming Pending state]
+** xref:02-deploy.adoc#ready[Running and not Ready]
+
+[.tile]
+* xref:03-service.adoc[3.Fixing Traffic Issues]
+** xref:03-service.adoc#wrongtarget[Troubleshooting Services]
+** xref:03-service.adoc#incorrectingress[Troubleshooting Ingress]
+
+[.tile]
+* xref:04-job.adoc[4.Troubleshooting Scheduled Jobs]
