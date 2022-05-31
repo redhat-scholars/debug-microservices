@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Troubleshooting Scheduled Jobs :: Troubleshooting Microservices</title>
+    <link rel="canonical" href="https://redhat-scholars.github.io/debug-microservices/debug-microservices/04-job.html">
+    <link rel="prev" href="03-service.html">
+    <meta name="generator" content="Antora 3.0.0">
+    <link rel="stylesheet" href="../_/css/site.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="https://developers.redhat.com" target="_blank"><img src="../_/img/NewRHDFullLogo_4-color_white-wordmark.png" height="40px" alt="Red Hat Developer Program"></a>
+      <a class="navbar-item" style="font-size: 24px; color: white" href="https://redhat-scholars.github.io/debug-microservices">Troubleshooting Microservices</a>
+      <button class="navbar-burger" data-target="topbar-nav">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <a class="navbar-item" href="https://developers.redhat.com/ebooks/" target="_blank">Books</a>
+        <a class="navbar-item" href="https://developers.redhat.com/cheatsheets/" target="_blank">Cheat Sheets</a>
+        <a class="navbar-item" href="https://developers.redhat.com/events/" target="_blank">Upcoming Events</a>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">More Tutorials</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="https://redhat-developer-demos.github.io/kubernetes-tutorial/" target="_blank">Kubernetes</a>
+            <a class="navbar-item" href="https://redhat-developer-demos.github.io/istio-tutorial/" target="_blank">Istio</a>
+            <a class="navbar-item" href="https://redhat-developer-demos.github.io/quarkus-tutorial/" target="_blank">Quarkus</a>
+            <a class="navbar-item" href="https://redhat-developer-demos.github.io/knative-tutorial/" target="_blank">Knative</a>
+            <a class="navbar-item" href="https://redhat-developer-demos.github.io/tekton-tutorial/" target="_blank">Tekton</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="debug-microservices" data-version="master">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <h3 class="title"><a href="index.html"></a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="01-setup.html">1.Setup</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="01-setup.html#prerequisite">Prerequisites</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="01-setup.html#minikube">Setup Minikube</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="01-setup.html#proddbsetup">Setup the database for production</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="02-deploy.html">2.Troubleshooting Deployments</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="02-deploy.html#quarkusremotedev">Quarkus remote development</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="02-deploy.html#deploy">Deploy the microservice</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="02-deploy.html#imagepullbackoff">Fixing ImagePullBackOff</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="02-deploy.html#crashloopbackoff">Fixing CrashLoopBackOff</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="02-deploy.html#runcontainererror">Fixing CreateContainerConfigError</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="02-deploy.html#pending">Overcoming Pending state</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="02-deploy.html#ready">Running and not Ready</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="03-service.html">3.Fixing Traffic Issues</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="03-service.html#wrongtarget">Troubleshooting Services</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="03-service.html#incorrectingress">Troubleshooting Ingress</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-current-page" data-depth="1">
+    <a class="nav-link" href="04-job.html">4.Troubleshooting Scheduled Jobs</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="index.html">Troubleshooting Microservices</a></li>
+    <li><a href="04-job.html">4.Troubleshooting Scheduled Jobs</a></li>
+  </ul>
+</nav>
+  <div class="edit-this-page"><a href="https://github.com/redhat-scholars/debug-microservices/edit/master/documentation/modules/ROOT/pages/04-job.adoc">Edit this Page</a></div>
+  </div>
+  <div class="content">
+<article class="doc">
+<h1 class="page">Troubleshooting Scheduled Jobs</h1>
+<div class="paragraph">
+<p>You can utilize Job and CronJob Kubernetes resources when you need to have a containerized application ready to automate tasks that need to be performed on a regular basis, without any user intervention.
+In this section we will take a closer look on how to fix troubles that may appear when misusing these of resources.</p>
+</div>
+<div class="paragraph">
+<p>Before proceeding to deploy a CronJob, let&#8217;s inspect its content to figure out its scope:</p>
+</div>
+<div class="listingblock console-input">
+<div class="title">great-job.yaml</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-yaml hljs" data-lang="yaml">kind: CronJob
+apiVersion: batch/v1
+metadata:
+  name: great-cron-job
+spec:
+  jobTemplate: 
+    spec:
+      template:
+        spec:
+          containers:
+            - image: busybox:latest
+              imagePullPolicy: Always
+              name: test-job
+              args:
+                - /bin/wget
+                - http://www.bbc.co.uk
+          restartPolicy: Never
+  schedule: "*/2 * * * *"<i class="conum" data-value="1"></i><b>(1)</b>
+  successfulJobsHistoryLimit: 1 <i class="conum" data-value="2"></i><b>(2)</b>
+  failedJobsHistoryLimit: 1 <i class="conum" data-value="3"></i><b>(3)</b>
+  concurrencyPolicy: Forbid <i class="conum" data-value="4"></i><b>(4)</b></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Run the job every 2 minutes.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The number of successfully finished jobs to retain.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The number of failed finished jobs to retain.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>Specifies how to treat concurrent executions of a Job. The default value is <code>Allow</code> that allows CronJobs to run concurrently.
+Other values are <code>Forbid</code>: forbids concurrent runs, skipping next run if previous run hasn&#8217;t finished yet; and <code>Replace</code> that cancels currently running job and replaces it with a new one.</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Next, let&#8217;s deploy the CronJob by running the following command:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl apply -f apps/kubefiles/great-job.yaml</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>You can check the status of your recently deployed resource by running:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl describe cronjob great-cron-job</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The output will be similar to:</p>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">Name:                          great-cron-job
+Namespace:                     user-dev
+Labels:                        &lt;none&gt;
+Annotations:                   &lt;none&gt;
+Schedule:                      */2 * * * *
+Concurrency Policy:            Forbid
+Suspend:                       False
+Successful Job History Limit:  1
+Failed Job History Limit:      1
+Starting Deadline Seconds:     &lt;unset&gt;
+Selector:                      &lt;unset&gt;
+Parallelism:                   &lt;unset&gt;
+Completions:                   &lt;unset&gt;
+Pod Template:
+  Labels:  &lt;none&gt;
+  Containers:
+   test-job:
+    Image:      busybox:latest
+    Port:       &lt;none&gt;
+    Host Port:  &lt;none&gt;
+    Args:
+      /bin/wget
+      http://www.bbc.co.uk
+    Environment:     &lt;none&gt;
+    Mounts:          &lt;none&gt;
+  Volumes:           &lt;none&gt;
+Last Schedule Time:  Tue, 31 May 2022 15:46:00 +0200
+Active Jobs:         great-cron-job-27566746
+Events:
+  Type    Reason            Age   From                Message
+  ----    ------            ----  ----                -------
+  Normal  SuccessfulCreate  54s   cronjob-controller  Created job great-cron-job-27566746</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>After two minutes, you will notice that a Job resource is created based on  the <code>JobTemplate</code> of the CronJob. Pods will created based on the <code>Template</code> specifications.
+This job should successfully create a Job resource and a Pod should successfully run to completion.</p>
+</div>
+<div class="paragraph">
+<p>Let&#8217;s check the state of the Pods after 2 minutes:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl get pods -o wide</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>By looking at the output, you will observe that the execution always terminates in error a continuous attempt to run the Job is made:</p>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">NAME                            READY   STATUS    RESTARTS   AGE     IP            NODE                                        NOMINATED NODE   READINESS GATES
+great-cron-job-27566746-746fs   0/1     Error     0          91s     10.131.0.86   ip-10-0-205-44.us-east-2.compute.internal   &lt;none&gt;           &lt;none&gt;
+great-cron-job-27566746-cwhjv   0/1     Error     0          62s     10.131.0.91   ip-10-0-205-44.us-east-2.compute.internal   &lt;none&gt;           &lt;none&gt;
+great-cron-job-27566746-dwglz   0/1     Error     0          72s     10.131.0.90   ip-10-0-205-44.us-east-2.compute.internal   &lt;none&gt;           &lt;none&gt;
+great-cron-job-27566746-fwfxn   0/1     Error     0          82s     10.131.0.89   ip-10-0-205-44.us-east-2.compute.internal   &lt;none&gt;           &lt;none&gt;
+great-cron-job-27566746-gv46r   0/1     Error     0          30s     10.131.0.99   ip-10-0-205-44.us-east-2.compute.internal   &lt;none&gt;           &lt;none&gt;
+great-cron-job-27566746-plcxb   0/1     Error     0          40s     10.131.0.98   ip-10-0-205-44.us-east-2.compute.internal   &lt;none&gt;           &lt;none&gt;
+great-cron-job-27566746-wzvdc   0/1     Error     0          51s     10.131.0.93   ip-10-0-205-44.us-east-2.compute.internal   &lt;none&gt;           &lt;none&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>However, despite having set to <code>Forbid</code> concurrent executions of Jobs, multiple attempts to successfully ran those Jobs are being made.
+These operations consume memory and CPU from the Kubernetes cluster and trigger an overload of resources from the node they ran on.</p>
+</div>
+<div class="paragraph">
+<p>To stop this problematic behavior and be able to investigate what is going on, you should suspend the CronJob by running:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl patch cronjob great-cron-job -p '{"spec": { "suspend": true }}'</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Now that your CronJob is suspended, you should check for Warning or Error events:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl get events –-field-selector type=Warning --sort-by=.metadata.creationTimestamp</code></pre>
+</div>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">LAST SEEN   TYPE      REASON                 OBJECT                          MESSAGE
+3m32s       Warning   BackoffLimitExceeded   job/great-cron-job-27566746     Job has reached the specified backoff limit
+91s         Warning   BackoffLimitExceeded   job/great-cron-job-27566748     Job has reached the specified backoff limit</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The warning is saying that each Job resource created by <code>great-cron-job</code> has reached the specified backoff limit.</p>
+</div>
+<div class="paragraph">
+<p>You keep seeing Pods being created despite that the previous one reaches <code>Error</code> phase even if the <code>backoffLimit</code> was not set.
+You should use the <code>spec.backoffLimit</code> to specify the number of retries before considering a Job as failed. The default value for back-off limit is set to 6.</p>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+Failed Pods associated with a Job are recreated by the Job controller with an exponential back-off delay (10s, 20s, 40s …) capped at six minutes.
+The back-off count is reset if no new failed Pods appear before the next status check of the Job.
+If a new job is scheduled before Job controller has a chance to recreate a pod, the Job controller starts counting from 1 again.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Let&#8217;s patch the CronJob with a <code>backoffLimit</code> value and see what happens:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl patch cronjob great-cron-job -p \
+'{"spec":{"suspend": false, "jobTemplate":{"spec":{"backoffLimit":0}}}}'</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Wait for 2 minutes and describe the state of the CronJob again by running:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl describe cronjob great-cron-job</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The output will be similar to:</p>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">Name:                          great-cron-job
+Namespace:                     anasandbox-dev
+Labels:                        &lt;none&gt;
+Annotations:                   &lt;none&gt;
+Schedule:                      */2 * * * *
+Concurrency Policy:            Forbid
+Suspend:                       False
+Successful Job History Limit:  1
+Failed Job History Limit:      1
+Starting Deadline Seconds:     &lt;unset&gt;
+Selector:                      &lt;unset&gt;
+Parallelism:                   &lt;unset&gt;
+Completions:                   &lt;unset&gt;
+Pod Template:
+  Labels:  &lt;none&gt;
+  Containers:
+   test-job:
+    Image:      busybox:latest
+    Port:       &lt;none&gt;
+    Host Port:  &lt;none&gt;
+    Args:
+      /bin/wget
+      http://www.bbc.co.uk
+    Environment:     &lt;none&gt;
+    Mounts:          &lt;none&gt;
+  Volumes:           &lt;none&gt;
+Last Schedule Time:  Tue, 31 May 2022 16:50:00 +0200
+Active Jobs:         &lt;none&gt;
+Events:
+  Type    Reason            Age                    From                Message
+  ----    ------            ----                   ----                -------
+  Normal  SuccessfulCreate  64m                    cronjob-controller  Created job great-cron-job-27566746
+  Normal  SawCompletedJob   63m                    cronjob-controller  Saw completed job: great-cron-job-27566746, status: Failed
+  Normal  SuccessfulCreate  62m                    cronjob-controller  Created job great-cron-job-27566748
+  Normal  SawCompletedJob   61m                    cronjob-controller  Saw completed job: great-cron-job-27566748, status: Failed
+  Normal  SuccessfulDelete  61m                    cronjob-controller  Deleted job great-cron-job-27566746
+  Normal  SuccessfulCreate  2m24s                  cronjob-controller  Created job great-cron-job-27566806
+  Normal  SuccessfulDelete  2m13s                  cronjob-controller  Deleted job great-cron-job-27566748
+  Normal  JobAlreadyActive  2m13s (x2 over 2m21s)  cronjob-controller  Not starting job because prior execution is running and concurrency policy is Forbid
+  Normal  SuccessfulCreate  2m13s                  cronjob-controller  Created job great-cron-job-27566808
+  Normal  SawCompletedJob   2m13s                  cronjob-controller  Saw completed job: great-cron-job-27566806, status: Failed
+  Normal  SawCompletedJob   2m3s                   cronjob-controller  Saw completed job: great-cron-job-27566808, status: Failed
+  Normal  SuccessfulDelete  2m3s                   cronjob-controller  Deleted job great-cron-job-27566806
+  Normal  SuccessfulCreate  21s                    cronjob-controller  Created job great-cron-job-27566810
+  Normal  SawCompletedJob   11s                    cronjob-controller  Saw completed job: great-cron-job-27566810, status: Failed
+  Normal  SuccessfulDelete  11s                    cronjob-controller  Deleted job great-cron-job-27566808</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Now, you can observe that despite the failure experienced when running the Job, the additional 6 trials are no longer there.</p>
+</div>
+<div class="paragraph">
+<p>If you like to further troubleshoot the failed state, you get the names of the Pods created earlier:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl get pods</code></pre>
+</div>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">NAME                            READY   STATUS    RESTARTS   AGE
+great-cron-job-27566904-cbrm8   0/1     Error     0          95s</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Let&#8217;s look into the logs of one of the Pods by running:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl logs great-cron-job-27566904-cbrm8</code></pre>
+</div>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">Connecting to www.bbc.co.uk (146.75.32.81:80)
+Connecting to www.bbc.co.uk (146.75.32.81:443)
+wget: note: TLS certificate validation not implemented
+wget: can't open 'index.html': Permission denied</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This shows that the wrong command was given when starting the pod. That can be easily patched with:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl patch cronjob great-cron-job --type='json' -p='[{"op": "replace", "path": "/spec/jobTemplate/spec/template/spec/containers/0/args",
+"value": [
+  "/bin/sh",
+  "-c",
+  "date;wget --no-check-certificate --spider https://www.bbc.com/"
+]}]'</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>As a result, the next Job ran will complete successfully.</p>
+</div>
+<div class="paragraph">
+<p>As a last step, you can cleanup by running:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl delete cronjob great-cron-job</code></pre>
+</div>
+</div>
+<nav class="pagination">
+  <span class="prev"><a href="03-service.html">3.Fixing Traffic Issues</a></span>
+</nav>
+</article>
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <a class="rhd-logo" href="https://developers.redhat.com" target="_blank"></div>
+</footer>
+<script src="../_/js/vendor/clipboard.js"></script>
+<script src="../_/js/site.js"></script>
+<script async src="../_/js/vendor/highlight.js"></script>
+  </body>
+</html>

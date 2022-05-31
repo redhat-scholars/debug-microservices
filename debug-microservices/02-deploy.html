@@ -1,0 +1,1369 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Troubleshooting Deployments :: Troubleshooting Microservices</title>
+    <link rel="canonical" href="https://redhat-scholars.github.io/debug-microservices/debug-microservices/02-deploy.html">
+    <link rel="prev" href="01-setup.html">
+    <link rel="next" href="03-service.html">
+    <meta name="generator" content="Antora 3.0.0">
+    <link rel="stylesheet" href="../_/css/site.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="https://developers.redhat.com" target="_blank"><img src="../_/img/NewRHDFullLogo_4-color_white-wordmark.png" height="40px" alt="Red Hat Developer Program"></a>
+      <a class="navbar-item" style="font-size: 24px; color: white" href="https://redhat-scholars.github.io/debug-microservices">Troubleshooting Microservices</a>
+      <button class="navbar-burger" data-target="topbar-nav">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <a class="navbar-item" href="https://developers.redhat.com/ebooks/" target="_blank">Books</a>
+        <a class="navbar-item" href="https://developers.redhat.com/cheatsheets/" target="_blank">Cheat Sheets</a>
+        <a class="navbar-item" href="https://developers.redhat.com/events/" target="_blank">Upcoming Events</a>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">More Tutorials</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="https://redhat-developer-demos.github.io/kubernetes-tutorial/" target="_blank">Kubernetes</a>
+            <a class="navbar-item" href="https://redhat-developer-demos.github.io/istio-tutorial/" target="_blank">Istio</a>
+            <a class="navbar-item" href="https://redhat-developer-demos.github.io/quarkus-tutorial/" target="_blank">Quarkus</a>
+            <a class="navbar-item" href="https://redhat-developer-demos.github.io/knative-tutorial/" target="_blank">Knative</a>
+            <a class="navbar-item" href="https://redhat-developer-demos.github.io/tekton-tutorial/" target="_blank">Tekton</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="debug-microservices" data-version="master">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <h3 class="title"><a href="index.html"></a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="01-setup.html">1.Setup</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="01-setup.html#prerequisite">Prerequisites</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="01-setup.html#minikube">Setup Minikube</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="01-setup.html#proddbsetup">Setup the database for production</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-current-page" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="02-deploy.html">2.Troubleshooting Deployments</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="#quarkusremotedev">Quarkus remote development</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="#deploy">Deploy the microservice</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="#imagepullbackoff">Fixing ImagePullBackOff</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="#crashloopbackoff">Fixing CrashLoopBackOff</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="#runcontainererror">Fixing CreateContainerConfigError</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="#pending">Overcoming Pending state</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="#ready">Running and not Ready</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="03-service.html">3.Fixing Traffic Issues</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="03-service.html#wrongtarget">Troubleshooting Services</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="03-service.html#incorrectingress">Troubleshooting Ingress</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="04-job.html">4.Troubleshooting Scheduled Jobs</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="index.html">Troubleshooting Microservices</a></li>
+    <li><a href="02-deploy.html">2.Troubleshooting Deployments</a></li>
+  </ul>
+</nav>
+  <div class="edit-this-page"><a href="https://github.com/redhat-scholars/debug-microservices/edit/master/documentation/modules/ROOT/pages/02-deploy.adoc">Edit this Page</a></div>
+  </div>
+  <div class="content">
+<article class="doc">
+<h1 class="page">Troubleshooting Deployments</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>In this section we will deploy a microservice (<code>hello-fix</code>), observe states when the application might experience troubled situations and apply various solutions to fix those.
+You can find The <code>hello-fix</code> microservice in <em>/apps/hello-fix</em>. The <code>hello-fix</code> microservice is a Quarkus application.
+This microservice stores data in a MariaDB database and exposes a fruit API for end-user consumption.
+The fruit information exposed by the microservice is an integration between data stored in the database and nutritional information from an external API (<a href="https://www.fruityvice.com" class="bare">https://www.fruityvice.com</a>).</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="quarkusremotedev"><a class="anchor" href="#quarkusremotedev"></a>Quarkus remote development</h2>
+<div class="sectionbody">
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+Using Quarkus&#8217;s remote development mode in production could cause unexpected functional changes to the running application. Remote development should only be used when the application is in development.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>To develop remotely, you need to build a mutable application using the mutable-jar format. You can then use the Kubernetes extension and Maven plug-in to deploy the application to your remote Kubernetes cluster.
+Add the following configurations to the <code>hello-fix</code> Quarkus project&#8217;s <code>application.properties</code> file (<em>apps/hello-fix/src/resources/application.properties</em>):</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-properties hljs" data-lang="properties"># Mutable Jar configurations
+#quarkus.package.type=mutable-jar
+quarkus.live-reload.password=changeit
+
+quarkus.kubernetes-client.trust-certs=true
+quarkus.kubernetes.deployment-target=kubernetes
+quarkus.kubernetes.env.vars.quarkus-launch-devmode=true</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Next, you should deploy a container image that already uses a mutable jar based on the same application code as <code>hello-fix</code>:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl apply -f apps/kubefiles/deploy-remote.yaml</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>By deploying on Red Hat OpenShift Sandbox, you can use the service EXTERNAL-IP as the live-reload url.
+To find out the EXTERNAL-IP, please run the following command:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl get svc hello-fix</code></pre>
+</div>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">NAME        TYPE           CLUSTER-IP     EXTERNAL-IP                                                              PORT(S)        AGE
+hello-fix   LoadBalancer   172.30.56.29   a13749a8d65354d8bbc3a63102a777ec-452410860.us-east-2.elb.amazonaws.com   80:32181/TCP   55m</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Add the following configuration in <em>apps/hello-fix/src/resources/application.properties</em>:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-properties hljs" data-lang="properties">quarkus.live-reload.url=http://a13749a8d65354d8bbc3a63102a777ec-452410860.us-east-2.elb.amazonaws.com/</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Next, you can run the application in remote development mode using:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">mvn quarkus:remote-dev -Dquarkus.package.type=mutable-jar</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>After the application starts, you can make several changes to the already deployed application.
+You can start by adding more properties in <em>apps/hello-fix/src/resources/application.properties</em>:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-properties hljs" data-lang="properties">quarkus.smallrye-health.root-path=/health</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>And even change the output shown in <em>apps/hello-fix/src/main/java/com/redhat/developers/GreetingResource.java</em>:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">package com.redhat.developers;
+
+import javax.ws.rs.GET;
+import javax.ws.rs.Path;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.MediaType;
+
+@Path("/hello")
+public class GreetingResource {
+
+    @GET
+    @Produces(MediaType.TEXT_PLAIN)
+    public String hello() {
+        return "Hello from Remote RESTEasy Reactive";
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>You can check your changes by accessing the <em>/hello</em> endpoint:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">curl a13749a8d65354d8bbc3a63102a777ec-452410860.us-east-2.elb.amazonaws.com/hello</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The output will be similar to:</p>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">Hello from Remote RESTEasy Reactive</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Or you can check the new health endpoint by running:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">curl a13749a8d65354d8bbc3a63102a777ec-452410860.us-east-2.elb.amazonaws.com/health</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The output would be similar to:</p>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-json hljs" data-lang="json">{
+    "status": "UP",
+    "checks": [
+        {
+            "name": "Database connections health check",
+            "status": "UP"
+        },
+        {
+            "name": "external-url-check",
+            "status": "UP",
+            "data": {
+                "host": "GET https://www.fruityvice.com/api/fruit/all"
+            }
+        }
+    ]
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="deploy"><a class="anchor" href="#deploy"></a>Deploy the microservice</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>To deploy a microservice application on Kubernetes you need to:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>package the application</p>
+</li>
+<li>
+<p>create a container image that will have the packaged application</p>
+</li>
+<li>
+<p>apply a Kubernetes Deployment resource to run a container using the previously created image.</p>
+</li>
+</ol>
+</div>
+<div class="sect2">
+<h3 id="_authenticating_and_pushing_the_image_to_your_container_registry"><a class="anchor" href="#_authenticating_and_pushing_the_image_to_your_container_registry"></a>Authenticating and pushing the image to your container registry</h3>
+<div class="paragraph">
+<p>Firstly, go to <em>apps/hello-fix/src/resources/application.properties</em> and add your <em>quay.io</em> user:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-properties hljs" data-lang="properties">quarkus.container-image.group=PLEASE_ADD_YOUR_USER_HERE</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Secondly, add the extension <code>quarkus-container-image-jib</code> to build dockerless containers:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">mvn quarkus:add-extension -Dextensions="io.quarkus:quarkus-kubernetes"</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Thirdly, to push the container image, you need to authenticate to your container registry:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">docker login quay.io</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Now create and push your container image using jib:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">mvn clean package -DskipTests -Dquarkus.container-image.push=true</code></pre>
+</div>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">[INFO] [io.quarkus.container.image.jib.deployment.JibProcessor] Using base image with digest: sha256:0aca47bf03430b5ee5033d67ba9b38871470af00fa7d80a38c1cc0ae34270935
+[INFO] [io.quarkus.container.image.jib.deployment.JibProcessor] Container entrypoint set to [java, -Djava.util.logging.manager=org.jboss.logmanager.LogManager, -jar, quarkus-run.jar]
+[INFO] [io.quarkus.container.image.jib.deployment.JibProcessor] Pushed container image quay.io/yourrepo/hello-fix:1.0.0-SNAPSHOT (sha256:ff6c8c8d95e96756506bbc7aa6470661d841d052a22df861303c34996c155f2b)
+
+[INFO] [io.quarkus.deployment.QuarkusAugmentor] Quarkus augmentation completed in 9835ms
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  14.934 s
+[INFO] Finished at: 2022-05-27T12:06:36+02:00
+[INFO] ------------------------------------------------------------------------</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_deploy_on_kubernetes"><a class="anchor" href="#_deploy_on_kubernetes"></a>Deploy on Kubernetes</h3>
+<div class="paragraph">
+<p>Before deploying to Kubernetes, let&#8217;s look into the definition of the Kubernetes resources located in <em>apps/kubefiles/deploy-imagepullbackoff.yaml</em>:</p>
+</div>
+<div class="listingblock console-input">
+<div class="title">deploy-imagepullbackoff.yaml</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-yaml hljs" data-lang="yaml">#[...]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    app.quarkus.io/commit-id: 91d4fef5457795ed2a1a38daeeaee4837254b390
+    app.quarkus.io/build-timestamp: 2022-05-27 - 10:06:28 +0000
+  labels:
+    app.kubernetes.io/version: 1.0.0-SNAPSHOT
+    app.kubernetes.io/name: hello-fix
+  name: hello-fix
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/version: 1.0.0-SNAPSHOT
+      app.kubernetes.io/name: hello-fix
+  template:
+    metadata:
+      annotations:
+        app.quarkus.io/commit-id: 91d4fef5457795ed2a1a38daeeaee4837254b390
+        app.quarkus.io/build-timestamp: 2022-05-27 - 10:06:28 +0000
+      labels:
+        app.kubernetes.io/version: 1.0.0-SNAPSHOT
+        app.kubernetes.io/name: hello-fix
+    spec:
+      containers:
+        - env:
+            - name: KUBERNETES_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          envFrom:
+            - secretRef:
+                name: mariadb
+          image: quay.io/&lt;PLEASE_ADD_YOUR_USER_HERE&gt;/hello-fix:1.0.0-SNAPSHOT
+          imagePullPolicy: Always
+          name: hello-fix
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+      serviceAccountName: hello-fix
+#[...]</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>You will need to input your user for the <a href="https://quay.io" class="bare">https://quay.io</a> login.
+Now you can deploy the file:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl apply -f apps/kubefiles/deploy-imagepullbackoff.yaml</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Let&#8217;s check the state of our deployment by running a <code>describe</code> command:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl describe deploy hello-fix</code></pre>
+</div>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">Name:                   hello-fix
+Namespace:              anasandbox-dev
+CreationTimestamp:      Fri, 27 May 2022 12:38:05 +0200
+Labels:                 app.kubernetes.io/name=hello-fix
+                        app.kubernetes.io/version=1.0.0-SNAPSHOT
+Annotations:            app.quarkus.io/build-timestamp: 2022-05-27 - 10:06:28 +0000
+                        app.quarkus.io/commit-id: 91d4fef5457795ed2a1a38daeeaee4837254b390
+                        deployment.kubernetes.io/revision: 1
+Selector:               app.kubernetes.io/name=hello-fix,app.kubernetes.io/version=1.0.0-SNAPSHOT
+Replicas:               1 desired | 1 updated | 1 total | 0 available | 1 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:           app.kubernetes.io/name=hello-fix
+                    app.kubernetes.io/version=1.0.0-SNAPSHOT
+  Annotations:      app.quarkus.io/build-timestamp: 2022-05-27 - 10:06:28 +0000
+                    app.quarkus.io/commit-id: 91d4fef5457795ed2a1a38daeeaee4837254b390
+  Service Account:  hello-fix
+  Containers:
+   hello-fix:
+    Image:      quay.io/anasandbox/hello-fix:1.0.0-SNAPSHOT
+    Port:       8080/TCP
+    Host Port:  0/TCP
+    Environment Variables from:
+      mariadb  Secret  Optional: false
+    Environment:
+      KUBERNETES_NAMESPACE:   (v1:metadata.namespace)
+    Mounts:                  &lt;none&gt;
+  Volumes:                   &lt;none&gt;
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Available      False   MinimumReplicasUnavailable
+  Progressing    True    ReplicaSetUpdated
+OldReplicaSets:  &lt;none&gt;
+NewReplicaSet:   hello-fix-5494cf88f9 (1/1 replicas created)
+Events:
+  Type    Reason             Age    From                   Message
+  ----    ------             ----   ----                   -------
+  Normal  ScalingReplicaSet  4m27s  deployment-controller  Scaled up replica set hello-fix-5494cf88f9 to 1</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Kubernetes cannot create the desired amount of replicas. Furthermore, let&#8217;s check the state of the pod by running:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl get pod</code></pre>
+</div>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">NAME                         READY   STATUS             RESTARTS   AGE
+hello-fix-5494cf88f9-xp78b   0/1     ImagePullBackOff   0          7m56s</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="imagepullbackoff"><a class="anchor" href="#imagepullbackoff"></a>Fixing ImagePullBackOff</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The <code>ImagePullBackOff</code> error appears when Kubernetes isn&#8217;t able to retrieve the image for one of the containers of the Pod.
+There are four common causes for this error:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>You specified a tag that does not exist for the image.</p>
+</li>
+<li>
+<p>The image name is invalid — for example,you misspelled the name, or the image does not exist yet in the registry.</p>
+</li>
+<li>
+<p>The image you&#8217;re trying to retrieve belongs to a private registry, and Kubernetes doesn&#8217;t have the credentials to access it.</p>
+</li>
+<li>
+<p>You’ve exceeded a rate or download limit on the registry.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Looking at your recent deployment, the first two causes can be excluded.
+If you look into your <a href="https://quay.io" class="bare">https://quay.io</a> account, you will see that the registry
+where your image exists is a private one.</p>
+</div>
+<div class="paragraph">
+<p>To securely fix this situation, you should add the credentials to your private registry in a Secret and reference it in your Pods.
+You can create a secret using the following command and replace the values for user and <strong>encrypted</strong> password with your own:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl create secret docker-registry regcred --docker-server=quay.io \
+    --docker-username=PLEASE_ADD_YOUR_USER_HERE \
+    --docker-password=PLEASE_ADD_ENCRYPTED_PASSWORD_HERE</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>For your recent deployment to use these credentials, you can add the secret to the <code>hello-fix</code> ServiceAccount by using the following command:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl patch serviceaccount hello-fix -p '{"imagePullSecrets": [{"name": "regcred"}]}'</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Lastly, rollout the deployment to make it aware of the changes done at ServiceAccount level:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl rollout restart deploy hello-fix</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Validate the fix by running:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl get pod</code></pre>
+</div>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">NAME                        READY   STATUS    RESTARTS   AGE
+hello-fix-d876fd8dd-dkfv6   1/1     Running   0          82s</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Now you can cleanup the scenario:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl delete deploy hello-fix
+kubectl delete svc hello-fix
+kubectl delete ingress hello-fix</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="crashloopbackoff"><a class="anchor" href="#crashloopbackoff"></a>Fixing CrashLoopBackOff</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>When a container cannot start Kubernetes shows its status as having a CrashLoopBackOff error. CrashLoopBackOff is a runtime error and
+shows that something is wrong with the container even before it starts.</p>
+</div>
+<div class="paragraph">
+<p>Let&#8217;s deploy again to Kubernetes using a different file:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl apply -f apps/kubefiles/deploy-eager.yaml</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Now issue a command to check the status of the pods:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl get pods</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The output should be similar to:</p>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">NAME                         READY   STATUS      RESTARTS   AGE
+hello-fix-5945856c46-rjfj7   1/1     Running     0          20s</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>If you try the same command again, the output will be similar to this:</p>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">NAME                         READY   STATUS      RESTARTS     AGE
+hello-fix-5945856c46-rjfj7   1/1     Running     1 (3s ago)   23s</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>If you check again the status of the pods, you will notice more restarts have happened:</p>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">NAME                         READY   STATUS             RESTARTS     AGE
+hello-fix-85bf986b8d-jvw9k   0/1     CrashLoopBackOff   3 (3s ago)   68s</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>and that CrashLoopBackOff error is shown. Next, you should try and retrieve the logs from that container to investigate why it failed using the following command:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl logs hello-fix-85bf986b8d-jvw9k --previous</code></pre>
+</div>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">__  ____  __  _____   ___  __ ____  ______
+--/ __ \/ / / / _ | / _ \/ //_/ / / / __/
+-/ /_/ / /_/ / __ |/ , _/ ,&lt; / /_/ /\ \
+--\___\_\____/_/ |_/_/|_/_/|_|\____/___/
+2022-05-30 10:02:32,043 INFO  [io.qua.sma.ope.run.OpenApiRecorder] (main) Default CORS properties will be used, please use 'quarkus.http.cors' properties instead
+2022-05-30 10:02:32,707 INFO  [io.quarkus] (main) hello-fix 1.0.0-SNAPSHOT on JVM (powered by Quarkus 2.9.1.Final) started in 2.881s. Listening on: http://0.0.0.0:8080
+2022-05-30 10:02:32,707 INFO  [io.quarkus] (main) Profile prod activated.
+2022-05-30 10:02:32,708 INFO  [io.quarkus] (main) Installed features: [agroal, cdi, hibernate-orm, hibernate-orm-panache, jdbc-mariadb, kubernetes, narayana-jta, rest-client-reactive, rest-client-reactive-jsonb, resteasy-reactive, smallrye-context-propagation, smallrye-health, smallrye-openapi, vertx]
+2022-05-30 10:02:44,224 INFO  [io.quarkus] (Shutdown thread) hello-fix stopped in 0.047s</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The output though shows nothing wrong with the way the application works, so something might not be configured well for this container.
+Let&#8217;s inspect a bit the content of <em>apps/kubefiles/deploy-eager.yaml</em>:</p>
+</div>
+<div class="listingblock console-input">
+<div class="title">deploy-eager.yaml</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-yaml hljs" data-lang="yaml">#[...]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    app.quarkus.io/commit-id: 91d4fef5457795ed2a1a38daeeaee4837254b390
+    app.quarkus.io/build-timestamp: 2022-05-27 - 12:35:51 +0000
+  labels:
+    app.kubernetes.io/version: 1.0.0
+    app.kubernetes.io/name: hello-fix
+  name: hello-fix
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/version: 1.0.0
+      app.kubernetes.io/name: hello-fix
+  template:
+    metadata:
+      annotations:
+        app.quarkus.io/commit-id: 91d4fef5457795ed2a1a38daeeaee4837254b390
+        app.quarkus.io/build-timestamp: 2022-05-27 - 12:35:51 +0000
+      labels:
+        app.kubernetes.io/version: 1.0.0
+        app.kubernetes.io/name: hello-fix
+    spec:
+      containers:
+        - env:
+            - name: KUBERNETES_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          image: quay.io/rhdevelopers/hello-fix:1.0.0
+          imagePullPolicy: Always
+          livenessProbe:
+            httpGet:
+              path: /q/health/liv
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 0 <i class="conum" data-value="1"></i><b>(1)</b>
+            timeoutSeconds: 10 <i class="conum" data-value="2"></i><b>(2)</b>
+            successThreshold: 1 <i class="conum" data-value="3"></i><b>(3)</b>
+            failureThreshold: 3  <i class="conum" data-value="4"></i><b>(4)</b>
+            periodSeconds: 5
+          name: hello-fix
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+---
+#[...]</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Wait for <code>initialDelaySeconds</code></td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Perform check and wait <code>timeoutSeconds</code> for a timeout for successful response.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>If the number of continued successes is greater than <code>successThreshold</code> return success.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>If the number of continued failures is greater than <code>failureThreshold</code> return failure otherwise wait <code>periodSeconds</code> and start a new check.</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>The container is not healthy and thus the liveness probe failure triggers its restart. And this is caused because the liveness check path is <code>/q/health/live</code> (and not <code>/q/health/liv</code>).
+Let&#8217;s patch the deployment and fix it:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl patch deploy hello-fix --type='json' -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/livenessProbe/httpGet/path", "value":"/q/health/live"}]'</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>If you check the state of the deployment using the following the command:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl get pods</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The output no longer shows restarts:</p>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">NAME                         READY   STATUS      RESTARTS   AGE
+hello-fix-565bc44644-b6j7m   1/1     Running     0          75s</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Now you can cleanup the scenario:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl delete deploy hello-fix
+kubectl delete svc hello-fix
+kubectl delete ingress hello-fix</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="runcontainererror"><a class="anchor" href="#runcontainererror"></a>Fixing CreateContainerConfigError</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>CreateContainerConfigError is another runtime error that appears when the container is unable to start,
+even before the application inside the container starts.</p>
+</div>
+<div class="paragraph">
+<p>Let&#8217;s observe closely such a situation and see how it can be fixed. Firstly, deploy <code>hello-fix</code> microservice again using the following command:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl apply -f apps/kubefiles/deploy-rce.yaml</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Once deployed, please check the status of the pod using the command:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl get pods</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The output would be similar to:</p>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">NAME                         READY   STATUS                       RESTARTS   AGE
+hello-fix-7c5fffc8c8-j2h8g   0/1     CreateContainerConfigError   0          20s</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The error message <code>CreateContainerConfigError</code> is usually due to misconfiguration such as:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Mounting a not-existent volume such as ConfigMap or Secrets.</p>
+</li>
+<li>
+<p>Mounting a read-only volume as read-write.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>To inspect and analyse the errors, let&#8217;s issue another command:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl describe pod hello-fix-7c5fffc8c8-j2h8g</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The last part of the output will contain the events related to this pod:</p>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">Events:
+Type     Reason          Age                    From               Message
+----     ------          ----                   ----               -------
+Normal   Scheduled       5m41s                  default-scheduler  Successfully assigned anasandbox-dev/hello-fix-7c5fffc8c8-j2h8g to ip-10-0-209-21.us-east-2.compute.internal
+Normal   AddedInterface  5m40s                  multus             Add eth0 [10.129.6.133/23] from openshift-sdn
+Normal   Pulled          5m40s                  kubelet            Successfully pulled image "quay.io/rhdevelopers/hello-fix:1.0.0" in 275.599451ms
+Normal   Pulled          5m39s                  kubelet            Successfully pulled image "quay.io/rhdevelopers/hello-fix:1.0.0" in 249.074903ms
+Normal   Pulled          5m38s                  kubelet            Successfully pulled image "quay.io/rhdevelopers/hello-fix:1.0.0" in 257.866213ms
+Normal   Pulled          5m24s                  kubelet            Successfully pulled image "quay.io/rhdevelopers/hello-fix:1.0.0" in 254.278022ms
+Normal   Pulled          5m12s                  kubelet            Successfully pulled image "quay.io/rhdevelopers/hello-fix:1.0.0" in 241.181607ms
+Normal   Pulled          4m58s                  kubelet            Successfully pulled image "quay.io/rhdevelopers/hello-fix:1.0.0" in 247.172925ms
+Normal   Pulled          4m45s                  kubelet            Successfully pulled image "quay.io/rhdevelopers/hello-fix:1.0.0" in 239.601958ms
+Warning  Failed          4m30s (x8 over 5m40s)  kubelet            Error: secret "maria" not found
+Normal   Pulled          4m30s                  kubelet            Successfully pulled image "quay.io/rhdevelopers/hello-fix:1.0.0" in 236.199003ms
+Normal   Pulling         28s (x26 over 5m40s)   kubelet            Pulling image "quay.io/rhdevelopers/hello-fix:1.0.0"</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>One of the lines above contains a warning and the message <em>Error: secret "maria" not found</em>.
+This secret is needed in order to retrieve database credentials and thus the application to connect to the MariaDB instance.
+Let&#8217;s see if this secret exists by running the command:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl get secret maria</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The response received for this command is :</p>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">Error from server (NotFound): secrets "maria" not found</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Furthermore, let&#8217;s inspect what secrets are available using the following command:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl get secrets</code></pre>
+</div>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">NAME                                   TYPE                                  DATA   AGE
+mariadb                                Opaque                                4      4d23h
+mariadb-ephemeral-parameters-vrtxp     Opaque                                8      4d23h
+regcred                                kubernetes.io/dockerconfigjson        1      2d23h
+sh.helm.release.v1.mariadb1.v1         helm.sh/release.v1                    1      3d1h</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>It looks like the <code>mariadb</code> secret exists and to fix the deployment we can use again a <code>patch</code> command:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl patch deploy hello-fix --type='json' -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/envFrom/0/secretRef/name", "value":"mariadb"}]'</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>You can check the state of the deployment using the following the command:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl get pods</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The failing pod is terminated while a new healthy instance is up an running:</p>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">NAME                         READY   STATUS        RESTARTS   AGE
+hello-fix-565bc44644-s4ft5   1/1     Running       0          4s
+hello-fix-7c5fffc8c8-j2h8g   0/1     Terminating   0          18m</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Now you can cleanup the scenario:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl delete deploy hello-fix
+kubectl delete svc hello-fix
+kubectl delete ingress hello-fix</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="pending"><a class="anchor" href="#pending"></a>Overcoming Pending state</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The status of a <code>Pod</code> is reflected in the <code>PodStatus</code> object, which has a phase field. The possible values for the phase field are:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top"><strong>Value</strong></th>
+<th class="tableblock halign-left valign-top"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Pending</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The Pod has been accepted by the Kubernetes cluster, but one or more of the containers has not been set up and made ready to run.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Running</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The Pod has been bound to a node, all the containers have been created and At least one container is still running.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Succeeded</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">All containers in the Pod have terminated in success, and will not be restarted.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Failed</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">All containers in the Pod have terminated, and at least one container has terminated in failure.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Unknown</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The state of the Pod could not be obtained.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Let&#8217;s start this exercise by deploying again <code>hello-fix</code> using the command:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl apply -f apps/kubefiles/deploy-claim.yaml</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Once deployed, please check the status of the pod using the command:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl get pods</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The output would be similar to:</p>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">NAME                         READY   STATUS      RESTARTS   AGE
+hello-fix-6c744dcc77-s6s8d   0/1     Pending     0          6s</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>To inspect and analyse the state of the pod, let&#8217;s issue another command:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl describe pod hello-fix-6c744dcc77-s6s8d</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The output will contain the following details:</p>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">Events:
+Type     Reason             Age               From                Message
+----     ------             ----              ----                -------
+Warning  FailedScheduling   29s               default-scheduler   0/10 nodes are available: 10 persistentvolumeclaim "xf" not found.
+Normal   NotTriggerScaleUp  8s (x2 over 21s)  cluster-autoscaler  pod didn't trigger scale-up: 1 persistentvolumeclaim "maria-pvclaim" not found</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>If you would like to obtain only the events and sort them by creation timestamp, you can use also the following command:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl get events --sort-by=.metadata.creationTimestamp</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Furthermore, when you need to filter by event type you should use the command bellow:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl get events -–field-selector type=Warning</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Since the deployment cannot find the persistentvolumeclaim "maria-pvclaim", let&#8217;s check its existence:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl get pvc maria-pvclaim</code></pre>
+</div>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">Error from server (NotFound): persistentvolumeclaims "maria-pvclaim" not found</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>To fix this situation we can easily create the PersistentVolumeClaim using the command:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl apply -f apps/kubefiles/maria-pvclaim.yaml</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Once deployed, please check the status of the pod using the command:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl get pods</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The output would be similar to:</p>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">NAME                         READY   STATUS      RESTARTS   AGE
+hello-fix-6c744dcc77-s6s8d   1/1     Running     0          10m</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Now you can cleanup the scenario:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl delete deploy hello-fix
+kubectl delete svc hello-fix
+kubectl delete ingress hello-fix</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="ready"><a class="anchor" href="#ready"></a>Running and not Ready</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>When a microservice depends on external configurations (available in Secrets and ConfigMaps), it can happen for a pod to be Running but not accepting any request.
+If the Readiness probe is failing, the Pod isn&#8217;t attached to the Service, and no traffic is forwarded to that instance.</p>
+</div>
+<div class="paragraph">
+<p>Let&#8217;s take a closer look to such a scenario by firstly deploying a new version of the <code>hello-fix</code> microservice:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl apply -f apps/kubefiles/deploy-not-ready.yaml</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Once deployed, please check the status of the pod using the command:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl get pods</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The output would be similar to:</p>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">NAME                         READY   STATUS      RESTARTS   AGE
+hello-fix-644f85ff64-flx5f   0/1     Running     0          3m21s</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>To inspect and analyse the state of the pod, let&#8217;s issue another command:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl get events --sort-by=.metadata.creationTimestamp</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The output will contain the following details:</p>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">LAST SEEN   TYPE      REASON                        OBJECT                                  MESSAGE
+6m37s       Normal    Pulling                       pod/hello-fix-644f85ff64-flx5f          Pulling image "quay.io/rhdevelopers/hello-fix:2.0.0"
+6m37s       Normal    EnsuredLoadBalancer           service/hello-fix                       Ensured load balancer
+5m42s       Warning   Unhealthy                     pod/hello-fix-644f85ff64-flx5f          Readiness probe failed: Get "http://10.128.7.126:80/q/health/ready": dial tcp 10.128.7.126:80: connect: connection refused</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A failing Readiness probe is an application-specific error.
+Let&#8217;s check if the path is valid by starting in Dev Mode the microservice located in <em>apps/hello-fix</em>:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">mvn quarkus:dev</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Now go in a browser and access <a href="http://localhost:8080/q/health/ready" class="bare">http://localhost:8080/q/health/ready</a> and observe the response:</p>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-json hljs" data-lang="json">{
+    "status": "UP",
+    "checks": [
+        {
+            "name": "Database connections health check",
+            "status": "UP"
+        },
+        {
+            "name": "external-url-check",
+            "status": "UP",
+            "data": {
+                "host": "GET https://www.fruityvice.com/api/fruit/all"
+            }
+        }
+    ]
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In this case, two dependencies (to the database and to the external service) are checked on the same path.
+If one is failing, the pod will not serve any request.</p>
+</div>
+<div class="paragraph">
+<p>The <code>hello-fix</code> microservice was developed iteratively and there two image tags available for it: 1.0.0 and 2.0.0.
+The image with tag 1.0.0 makes a readiness assessment only for the database.
+To further troubleshoot this situation, let&#8217;s set the image used by current deployment to 1.0.0:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl set image deployment hello-fix hello-fix=quay.io/rhdevelopers/hello-fix:1.0.0</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Once deployed, please check the status of the pod using the command:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl get pods</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The output would be similar to:</p>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">NAME                         READY   STATUS      RESTARTS   AGE
+hello-fix-6dcdfd67fc-w2t5p   1/1     Running     0          35s</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Let&#8217;s rollback the deployment to the previous image version:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl set image deployment hello-fix hello-fix=quay.io/rhdevelopers/hello-fix:2.0.0</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>By running <code>kubectl get pods</code> command the output will look similarly to this one:</p>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">NAME                         READY   STATUS      RESTARTS   AGE
+hello-fix-6dcdfd67fc-w2t5p   1/1     Running     0          11m
+hello-fix-8b8949b46-dhtl6    0/1     Running     0          48s</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Kubernetes will keep the pod that was running correctly previously while the other one overcomes its issues.
+The pod with the state not ready has its readiness failing due to the second probe check, the one named <em>external-url-check</em>.
+And this happens only in production, where the configuration is externalized. Let&#8217;s inspect the <em>apps/kubefiles/deploy-not-ready.yaml</em>:</p>
+</div>
+<div class="listingblock console-input">
+<div class="title">deploy-not-ready.yaml</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-yaml hljs" data-lang="yaml">#[...]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    app.quarkus.io/commit-id: 91d4fef5457795ed2a1a38daeeaee4837254b390
+    app.quarkus.io/build-timestamp: 2022-05-30 - 12:42:01 +0000
+  labels:
+    app.kubernetes.io/version: 2.0.0
+    app.kubernetes.io/name: hello-fix
+  name: hello-fix
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/version: 2.0.0
+      app.kubernetes.io/name: hello-fix
+  template:
+    metadata:
+      annotations:
+        app.quarkus.io/commit-id: 91d4fef5457795ed2a1a38daeeaee4837254b390
+        app.quarkus.io/build-timestamp: 2022-05-30 - 12:42:01 +0000
+      labels:
+        app.kubernetes.io/version: 2.0.0
+        app.kubernetes.io/name: hello-fix
+    spec:
+      containers:
+        - env:
+            - name: KUBERNETES_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: HELLO_FIX
+              valueFrom:
+                configMapKeyRef:
+                  key: url
+                  name: hello-fix
+          envFrom:
+            - secretRef:
+                name: mariadb
+          image: quay.io/rhdevelopers/hello-fix:2.0.0
+          imagePullPolicy: Always
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /q/health/live
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 0
+            periodSeconds: 30
+            successThreshold: 1
+            timeoutSeconds: 10
+          name: hello-fix
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /q/health/ready
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 0
+            periodSeconds: 30
+            successThreshold: 1
+            timeoutSeconds: 10
+#[...]</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The url to the external API is provided via an environment variable that searches for it into the ConfigMap <code>hello-fix</code>.
+Let&#8217;s get the content of the ConfigMap by running the command:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl get cm hello-fix -o yaml</code></pre>
+</div>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-yaml hljs" data-lang="yaml">apiVersion: v1
+data:
+  url: http
+kind: ConfigMap
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"v1","data":{"url":"http"},"kind":"ConfigMap","metadata":{"annotations":{},"name":"hello-fix","namespace":"anasandbox-dev"}}
+  creationTimestamp: "2022-05-30T12:45:21Z"
+  name: hello-fix
+  namespace: anasandbox-dev
+  resourceVersion: "1140097949"
+  uid: ecef068b-5ca6-4825-afed-6028a9ce45cb</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The url given there is not a valid. Let&#8217;s replace it with the correct one by running the command:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl replace -f apps/kubefiles/hello-fix-cm.yaml</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Now let&#8217;s rollout the deployment to make it aware of the change:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl rollout restart deploy hello-fix</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Once deployed, please check the status of the pod using the command:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl get pods</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The output would be similar to:</p>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">NAME                         READY   STATUS      RESTARTS   AGE
+hello-fix-6dcdfd67fc-w2t5p   1/1     Running     0          35s</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Please delete previously used Kubernetes resources:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl delete deploy hello-fix
+kubectl delete svc hello-fix
+kubectl delete ingress hello-fix
+kubectl delete cm hello-fix
+kubectl delete pvc maria-pvclaim</code></pre>
+</div>
+</div>
+</div>
+</div>
+<nav class="pagination">
+  <span class="prev"><a href="01-setup.html">1.Setup</a></span>
+  <span class="next"><a href="03-service.html">3.Fixing Traffic Issues</a></span>
+</nav>
+</article>
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <a class="rhd-logo" href="https://developers.redhat.com" target="_blank"></div>
+</footer>
+<script src="../_/js/vendor/clipboard.js"></script>
+<script src="../_/js/site.js"></script>
+<script async src="../_/js/vendor/highlight.js"></script>
+  </body>
+</html>

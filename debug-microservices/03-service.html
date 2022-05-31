@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Fixing Traffic Issues :: Troubleshooting Microservices</title>
+    <link rel="canonical" href="https://redhat-scholars.github.io/debug-microservices/debug-microservices/03-service.html">
+    <link rel="prev" href="02-deploy.html">
+    <link rel="next" href="04-job.html">
+    <meta name="generator" content="Antora 3.0.0">
+    <link rel="stylesheet" href="../_/css/site.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="https://developers.redhat.com" target="_blank"><img src="../_/img/NewRHDFullLogo_4-color_white-wordmark.png" height="40px" alt="Red Hat Developer Program"></a>
+      <a class="navbar-item" style="font-size: 24px; color: white" href="https://redhat-scholars.github.io/debug-microservices">Troubleshooting Microservices</a>
+      <button class="navbar-burger" data-target="topbar-nav">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <a class="navbar-item" href="https://developers.redhat.com/ebooks/" target="_blank">Books</a>
+        <a class="navbar-item" href="https://developers.redhat.com/cheatsheets/" target="_blank">Cheat Sheets</a>
+        <a class="navbar-item" href="https://developers.redhat.com/events/" target="_blank">Upcoming Events</a>
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link" href="#">More Tutorials</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="https://redhat-developer-demos.github.io/kubernetes-tutorial/" target="_blank">Kubernetes</a>
+            <a class="navbar-item" href="https://redhat-developer-demos.github.io/istio-tutorial/" target="_blank">Istio</a>
+            <a class="navbar-item" href="https://redhat-developer-demos.github.io/quarkus-tutorial/" target="_blank">Quarkus</a>
+            <a class="navbar-item" href="https://redhat-developer-demos.github.io/knative-tutorial/" target="_blank">Knative</a>
+            <a class="navbar-item" href="https://redhat-developer-demos.github.io/tekton-tutorial/" target="_blank">Tekton</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="debug-microservices" data-version="master">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <h3 class="title"><a href="index.html"></a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="01-setup.html">1.Setup</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="01-setup.html#prerequisite">Prerequisites</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="01-setup.html#minikube">Setup Minikube</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="01-setup.html#proddbsetup">Setup the database for production</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="02-deploy.html">2.Troubleshooting Deployments</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="02-deploy.html#quarkusremotedev">Quarkus remote development</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="02-deploy.html#deploy">Deploy the microservice</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="02-deploy.html#imagepullbackoff">Fixing ImagePullBackOff</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="02-deploy.html#crashloopbackoff">Fixing CrashLoopBackOff</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="02-deploy.html#runcontainererror">Fixing CreateContainerConfigError</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="02-deploy.html#pending">Overcoming Pending state</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="02-deploy.html#ready">Running and not Ready</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item is-current-page" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="03-service.html">3.Fixing Traffic Issues</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="#wrongtarget">Troubleshooting Services</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="#incorrectingress">Troubleshooting Ingress</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="04-job.html">4.Troubleshooting Scheduled Jobs</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="index.html">Troubleshooting Microservices</a></li>
+    <li><a href="03-service.html">3.Fixing Traffic Issues</a></li>
+  </ul>
+</nav>
+  <div class="edit-this-page"><a href="https://github.com/redhat-scholars/debug-microservices/edit/master/documentation/modules/ROOT/pages/03-service.adoc">Edit this Page</a></div>
+  </div>
+  <div class="content">
+<article class="doc">
+<h1 class="page">Fixing Traffic Issues</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>The scenarios that we will look into this section are about troubleshooting those situations your Pods are Running and Ready, but you&#8217;re still unable to receive a response from your application.
+In these situations you should check if the Service is configured correctly.</p>
+</div>
+<div class="paragraph">
+<p>Services are the Kubernetes resources designed to route the traffic to Pods based on their labels.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="wrongtarget"><a class="anchor" href="#wrongtarget"></a>Troubleshooting Services</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Let&#8217;s start by deploying the microservice using the command:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl apply -f apps/kubefiles/deploy-another-port.yaml</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Once deployed, let&#8217;s verify if everything is going well by running:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl get deploy hello-fix</code></pre>
+</div>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">NAME        READY   UP-TO-DATE   AVAILABLE   AGE
+hello-fix   1/1     1            1           24m</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Also, let&#8217;s check the Service state:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl get svc hello-fix -o wide</code></pre>
+</div>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">NAME        TYPE           CLUSTER-IP       EXTERNAL-IP                                                               PORT(S)        AGE   SELECTOR
+hello-fix   LoadBalancer   172.30.163.216   a9fc097093e9244f08bd7f3e10195bd2-1198597076.us-east-2.elb.amazonaws.com   80:30258/TCP   25m   app.kubernetes.io/name=hello-fix,app.kubernetes.io/version=2.0.0</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>To validate the connection between Deployment, Pods and Service you should check how many Pods are targeted by the Service by looking at EndpointSlices.
+This will show each of the services in the namespace and which pod IP addresses are associated with that service.</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl get endpointslices -o wide</code></pre>
+</div>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">NAME                                  ADDRESSTYPE   PORTS     ENDPOINTS     AGE
+hello-fix-d9fd48749-wpd47              IPv4          9090      10.131.0.241   58s</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Next, from inside a container running in the Pod, execute a curl towards the endpoint:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl exec hello-fix-d9fd48749-wpd47 -- curl 10.131.0.241:9090</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>You should see an output similar to:</p>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0curl: (7) Failed to connect to 10.131.0.241 port 9090: Connection refused</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Let&#8217;s take a closer look to the Pod and its definition by running the following command:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl get pod hello-fix-d9fd48749-wpd47 -o yaml</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In the output, search for how the ports are configured:</p>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-yaml hljs" data-lang="yaml">apiVersion: v1
+kind: Pod
+#[...]
+spec:
+  containers:
+  - env:
+    - name: KUBERNETES_NAMESPACE
+      valueFrom:
+        fieldRef:
+          apiVersion: v1
+          fieldPath: metadata.namespace
+    envFrom:
+    - secretRef:
+        name: mariadb
+    image: quay.io/rhdevelopers/hello-fix:2.0.0
+    imagePullPolicy: Always
+    livenessProbe:
+      failureThreshold: 3
+      httpGet:
+        path: /q/health/live
+        port: 8080
+        scheme: HTTP
+      periodSeconds: 30
+      successThreshold: 1
+      timeoutSeconds: 10
+    name: hello-fix
+    ports:
+    - containerPort: 8080
+      name: http
+      protocol: TCP</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>It looks like the container exposes its API via port 8080, while the Service resource tries to connect via 9090.
+Let&#8217;s fix this situation by patching the service resource with the correct port:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl patch svc hello-fix -p '{"spec": {"ports": [{"port": 80,"targetPort": 8080,"name": "http"}],"type": "LoadBalancer"}}'</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Let&#8217;s execute again the curl command to validate the newly updated port:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl exec hello-fix-d9fd48749-wpd47 -- curl 10.131.0.241:8080</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This time you will receive a valid answer. Now you can cleanup the scenario:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl delete deploy hello-fix
+kubectl delete svc hello-fix
+kubectl delete ingress hello-fix</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="incorrectingress"><a class="anchor" href="#incorrectingress"></a>Troubleshooting Ingress</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>You should look into Ingress configurations whenever you experience the following behaviors:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>All the Pods associated with your Deployment are Running and Ready, while the Service resource distributes traffic to the Pods.</p>
+</li>
+<li>
+<p>You cannot obtain a successful response from the application you deployed.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Let&#8217;s look into this type of scenario by firstly deploying the microservice:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl apply -f apps/kubefiles/deploy-another-name.yaml</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Once deployed, let&#8217;s verify if everything is going well by running:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl get deploy hello-fix</code></pre>
+</div>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">NAME        READY   UP-TO-DATE   AVAILABLE   AGE
+hello-fix   1/1     1            1           35s</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Also, let&#8217;s check the Service state:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl get svc hello-fix -o wide</code></pre>
+</div>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">NAME        TYPE           CLUSTER-IP       EXTERNAL-IP                                                               PORT(S)        AGE   SELECTOR
+hello-fix   LoadBalancer   172.30.187.118   abaa320c215e74b95929c3d9a0de82af-696971893.us-east-2.elb.amazonaws.com   80:32661/TCP   53s   app.kubernetes.io/name=hello-fix,app.kubernetes.io/version=2.0.0</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>To validate the connection between Deployment, Pods and Service you should Next should check is how many Pods are targeted by the Service by running a describe command and looking at Endpoints:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl describe svc hello-fix</code></pre>
+</div>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">Name:                     hello-fix
+Namespace:                anasandbox-dev
+Labels:                   app.kubernetes.io/name=hello-fix
+                          app.kubernetes.io/version=2.0.0
+Annotations:              app.quarkus.io/build-timestamp: 2022-05-30 - 12:42:01 +0000
+                          app.quarkus.io/commit-id: 91d4fef5457795ed2a1a38daeeaee4837254b390
+Selector:                 app.kubernetes.io/name=hello-fix,app.kubernetes.io/version=2.0.0
+Type:                     LoadBalancer
+IP Family Policy:         SingleStack
+IP Families:              IPv4
+IP:                       172.30.187.118
+IPs:                      172.30.187.118
+LoadBalancer Ingress:     abaa320c215e74b95929c3d9a0de82af-696971893.us-east-2.elb.amazonaws.com
+Port:                     http  80/TCP
+TargetPort:               8080/TCP
+NodePort:                 http  32661/TCP
+Endpoints:                10.128.4.21:8080
+Session Affinity:         None
+External Traffic Policy:  Cluster
+Events:
+  Type    Reason                Age   From                Message
+  ----    ------                ----  ----                -------
+  Normal  EnsuringLoadBalancer  64s   service-controller  Ensuring load balancer
+  Normal  EnsuredLoadBalancer   61s   service-controller  Ensured load balancer</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In this case the cloud LoadBalancer connects to the application just deployed.
+However, let&#8217;s look into the Ingress health by running:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl describe ingress hello-fix</code></pre>
+</div>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">Name:             hello-fix
+Labels:           app.kubernetes.io/name=hello-fix
+                  app.kubernetes.io/version=2.0.0
+Namespace:        anasandbox-dev
+Address:
+Default backend:  default-http-backend:80 (&lt;error: endpoints "default-http-backend" is forbidden: User "anasandbox" cannot get resource "endpoints" in API group "" in the namespace "kube-system"&gt;)
+Rules:
+  Host        Path  Backends
+  ----        ----  --------
+  *
+              /   hellofix:http (&lt;error: endpoints "hellofix" not found&gt;)
+Annotations:  app.quarkus.io/build-timestamp: 2022-05-30 - 12:42:01 +0000
+              app.quarkus.io/commit-id: 91d4fef5457795ed2a1a38daeeaee4837254b390</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>You can easily spot an error regarding the endpoint as the Ingress searches for <code>hellofix</code>, and not <code>hello-fix</code>.
+To fix the Ingress resource you can use the following command:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl patch ingress hello-fix --type='json' -p='[{"op": "replace", "path": "/spec/rules/0/http/paths/0/backend/service/name", "value":"hello-fix"}]'</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>If you run again:</p>
+</div>
+<div class="paragraph">
+<p>let&#8217;s look into the Ingress health by running:</p>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl describe ingress hello-fix</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The output will show no error:</p>
+</div>
+<div class="listingblock console-output">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-text hljs" data-lang="text">Rules:
+  Host        Path  Backends
+  ----        ----  --------
+  *
+              /   hello-fix:http (10.128.4.21:8080)
+Annotations:  app.quarkus.io/build-timestamp: 2022-05-30 - 12:42:01 +0000
+              app.quarkus.io/commit-id: 91d4fef5457795ed2a1a38daeeaee4837254b390
+Events:       &lt;none&gt;</code></pre>
+</div>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>Now you can cleanup the scenario:</pre>
+</div>
+</div>
+<div class="listingblock console-input">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">kubectl delete deploy hello-fix
+kubectl delete svc hello-fix
+kubectl delete ingress hello-fix</code></pre>
+</div>
+</div>
+</div>
+</div>
+<nav class="pagination">
+  <span class="prev"><a href="02-deploy.html">2.Troubleshooting Deployments</a></span>
+  <span class="next"><a href="04-job.html">4.Troubleshooting Scheduled Jobs</a></span>
+</nav>
+</article>
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <a class="rhd-logo" href="https://developers.redhat.com" target="_blank"></div>
+</footer>
+<script src="../_/js/vendor/clipboard.js"></script>
+<script src="../_/js/site.js"></script>
+<script async src="../_/js/vendor/highlight.js"></script>
+  </body>
+</html>
