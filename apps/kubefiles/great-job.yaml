@@ -1,0 +1,21 @@
+kind: CronJob
+apiVersion: batch/v1
+metadata:
+  name: great-cron-job
+spec:
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - image: busybox:latest
+              imagePullPolicy: Always
+              name: test-job
+              args:
+                - /bin/wget
+                - http://www.bbc.co.uk
+          restartPolicy: Never
+  schedule: "*/2 * * * *"
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  concurrencyPolicy: Forbid

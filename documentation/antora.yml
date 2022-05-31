@@ -1,5 +1,5 @@
-name: template-tutorial
-title: Template Tutorial
+name: debug-microservices
+title: Troubleshooting Microservices
 version: master
 nav:
   - modules/ROOT/nav.adoc

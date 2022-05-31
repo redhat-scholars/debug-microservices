@@ -1,43 +1,935 @@
-= Deploy Service
+= Troubleshooting Deployments
 include::_attributes.adoc[]
 
-[#service]
-== The Service
+In this section we will deploy a microservice (`hello-fix`), observe states when the application might experience troubled situations and apply various solutions to fix those.
+You can find The `hello-fix` microservice in _/apps/hello-fix_. The `hello-fix` microservice is a Quarkus application.
+This microservice stores data in a MariaDB database and exposes a fruit API for end-user consumption.
+The fruit information exposed by the microservice is an integration between data stored in the database and nutritional information from an external API (https://www.fruityvice.com).
 
-The code:
+[#quarkusremotedev]
+== Quarkus remote development
 
-[.lines_7]
+IMPORTANT: Using Quarkus's remote development mode in production could cause unexpected functional changes to the running application. Remote development should only be used when the application is in development.
+
+To develop remotely, you need to build a mutable application using the mutable-jar format. You can then use the Kubernetes extension and Maven plug-in to deploy the application to your remote Kubernetes cluster. 
+Add the following configurations to the `hello-fix` Quarkus project's `application.properties` file (_apps/hello-fix/src/resources/application.properties_):
+
 [.console-input]
-[source, java,subs="+macros,+attributes"]
+[source,properties]
 ----
-public class Main {
+# Mutable Jar configurations
+#quarkus.package.type=mutable-jar
+quarkus.live-reload.password=changeit
 
-    public static void main(String[] args) {
+quarkus.kubernetes-client.trust-certs=true
+quarkus.kubernetes.deployment-target=kubernetes
+quarkus.kubernetes.env.vars.quarkus-launch-devmode=true
+----
 
-    } 
+Next, you should deploy a container image that already uses a mutable jar based on the same application code as `hello-fix`:
 
+[.console-input]
+[source,bash]
+----
+kubectl apply -f apps/kubefiles/deploy-remote.yaml
+----
+
+By deploying on Red Hat OpenShift Sandbox, you can use the service EXTERNAL-IP as the live-reload url.
+To find out the EXTERNAL-IP, please run the following command:
+
+[.console-input]
+[source,bash]
+----
+kubectl get svc hello-fix
+----
+
+[.console-output]
+[source,text]
+----
+NAME        TYPE           CLUSTER-IP     EXTERNAL-IP                                                              PORT(S)        AGE
+hello-fix   LoadBalancer   172.30.56.29   a13749a8d65354d8bbc3a63102a777ec-452410860.us-east-2.elb.amazonaws.com   80:32181/TCP   55m
+----
+
+Add the following configuration in _apps/hello-fix/src/resources/application.properties_:
+
+[.console-input]
+[source,properties]
+----
+quarkus.live-reload.url=http://a13749a8d65354d8bbc3a63102a777ec-452410860.us-east-2.elb.amazonaws.com/
+----
+
+Next, you can run the application in remote development mode using:
+
+[.console-input]
+[source,bash]
+----
+mvn quarkus:remote-dev -Dquarkus.package.type=mutable-jar
+----
+
+After the application starts, you can make several changes to the already deployed application. 
+You can start by adding more properties in _apps/hello-fix/src/resources/application.properties_:
+[.console-input]
+[source,properties]
+----
+quarkus.smallrye-health.root-path=/health
+----
+
+And even change the output shown in _apps/hello-fix/src/main/java/com/redhat/developers/GreetingResource.java_:
+[.console-input]
+[source,java]
+----
+package com.redhat.developers;
+
+import javax.ws.rs.GET;
+import javax.ws.rs.Path;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.MediaType;
+
+@Path("/hello")
+public class GreetingResource {
+
+    @GET
+    @Produces(MediaType.TEXT_PLAIN)
+    public String hello() {
+        return "Hello from Remote RESTEasy Reactive";
+    }
 }
-
-./mvnw compile
 ----
 
-[#package]
-== Packaging the Service
+You can check your changes by accessing the _/hello_ endpoint:
 
-You can package the next bash script:
-
-[source,bash,subs="+macros,+attributes"]
+[.console-input]
+[source,bash]
 ----
-include::example$run.sh[]
+curl a13749a8d65354d8bbc3a63102a777ec-452410860.us-east-2.elb.amazonaws.com/hello 
+----
+
+The output will be similar to:
+
+[.console-output]
+[source,text]
+----
+Hello from Remote RESTEasy Reactive
+----
+
+Or you can check the new health endpoint by running:
+[.console-input]
+[source,bash]
+----
+curl a13749a8d65354d8bbc3a63102a777ec-452410860.us-east-2.elb.amazonaws.com/health 
+----
+
+The output would be similar to:
+
+[.console-output]
+[source, json]
+----
+{
+    "status": "UP",
+    "checks": [
+        {
+            "name": "Database connections health check",
+            "status": "UP"
+        },
+        {
+            "name": "external-url-check",
+            "status": "UP",
+            "data": {
+                "host": "GET https://www.fruityvice.com/api/fruit/all"
+            }
+        }
+    ]
+}
 ----
 
 [#deploy]
-== Deploy the Service
+== Deploy the microservice
 
-And then you can deploy the service and execute commands inside:
+To deploy a microservice application on Kubernetes you need to:
 
-:podname: apps
+. package the application
+. create a container image that will have the packaged application
+. apply a Kubernetes Deployment resource to run a container using the previously created image.
 
-include::partial$exec_pod.adoc[]
 
-:!podname:
+=== Authenticating and pushing the image to your container registry
+
+Firstly, go to _apps/hello-fix/src/resources/application.properties_ and add your _quay.io_ user:
+
+[.console-input]
+[source,properties]
+----
+quarkus.container-image.group=PLEASE_ADD_YOUR_USER_HERE
+----
+
+Secondly, add the extension `quarkus-container-image-jib` to build dockerless containers:
+
+[.console-input]
+[source,bash]
+----
+mvn quarkus:add-extension -Dextensions="io.quarkus:quarkus-kubernetes"
+----
+
+Thirdly, to push the container image, you need to authenticate to your container registry:
+
+[.console-input]
+[source,bash]
+----
+docker login quay.io
+----
+
+Now create and push your container image using jib:
+
+[.console-input]
+[source,bash]
+----
+mvn clean package -DskipTests -Dquarkus.container-image.push=true
+----
+
+[.console-output]
+[source,text]
+----
+[INFO] [io.quarkus.container.image.jib.deployment.JibProcessor] Using base image with digest: sha256:0aca47bf03430b5ee5033d67ba9b38871470af00fa7d80a38c1cc0ae34270935
+[INFO] [io.quarkus.container.image.jib.deployment.JibProcessor] Container entrypoint set to [java, -Djava.util.logging.manager=org.jboss.logmanager.LogManager, -jar, quarkus-run.jar]
+[INFO] [io.quarkus.container.image.jib.deployment.JibProcessor] Pushed container image quay.io/yourrepo/hello-fix:1.0.0-SNAPSHOT (sha256:ff6c8c8d95e96756506bbc7aa6470661d841d052a22df861303c34996c155f2b)
+
+[INFO] [io.quarkus.deployment.QuarkusAugmentor] Quarkus augmentation completed in 9835ms
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  14.934 s
+[INFO] Finished at: 2022-05-27T12:06:36+02:00
+[INFO] ------------------------------------------------------------------------
+----
+
+=== Deploy on Kubernetes
+
+Before deploying to Kubernetes, let's look into the definition of the Kubernetes resources located in _apps/kubefiles/deploy-imagepullbackoff.yaml_:
+[.console-input]
+[source, yaml]
+.deploy-imagepullbackoff.yaml
+----
+include::example$deploy-imagepullbackoff.yaml[]
+----
+
+You will need to input your user for the https://quay.io login.
+Now you can deploy the file:
+
+[.console-input]
+[source,bash]
+----
+kubectl apply -f apps/kubefiles/deploy-imagepullbackoff.yaml
+----
+
+Let's check the state of our deployment by running a `describe` command:
+
+[.console-input]
+[source,bash]
+----
+kubectl describe deploy hello-fix
+----
+
+[.console-output]
+[source,text]
+----
+Name:                   hello-fix
+Namespace:              anasandbox-dev
+CreationTimestamp:      Fri, 27 May 2022 12:38:05 +0200
+Labels:                 app.kubernetes.io/name=hello-fix
+                        app.kubernetes.io/version=1.0.0-SNAPSHOT
+Annotations:            app.quarkus.io/build-timestamp: 2022-05-27 - 10:06:28 +0000
+                        app.quarkus.io/commit-id: 91d4fef5457795ed2a1a38daeeaee4837254b390
+                        deployment.kubernetes.io/revision: 1
+Selector:               app.kubernetes.io/name=hello-fix,app.kubernetes.io/version=1.0.0-SNAPSHOT
+Replicas:               1 desired | 1 updated | 1 total | 0 available | 1 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:           app.kubernetes.io/name=hello-fix
+                    app.kubernetes.io/version=1.0.0-SNAPSHOT
+  Annotations:      app.quarkus.io/build-timestamp: 2022-05-27 - 10:06:28 +0000
+                    app.quarkus.io/commit-id: 91d4fef5457795ed2a1a38daeeaee4837254b390
+  Service Account:  hello-fix
+  Containers:
+   hello-fix:
+    Image:      quay.io/anasandbox/hello-fix:1.0.0-SNAPSHOT
+    Port:       8080/TCP
+    Host Port:  0/TCP
+    Environment Variables from:
+      mariadb  Secret  Optional: false
+    Environment:
+      KUBERNETES_NAMESPACE:   (v1:metadata.namespace)
+    Mounts:                  <none>
+  Volumes:                   <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Available      False   MinimumReplicasUnavailable
+  Progressing    True    ReplicaSetUpdated
+OldReplicaSets:  <none>
+NewReplicaSet:   hello-fix-5494cf88f9 (1/1 replicas created)
+Events:
+  Type    Reason             Age    From                   Message
+  ----    ------             ----   ----                   -------
+  Normal  ScalingReplicaSet  4m27s  deployment-controller  Scaled up replica set hello-fix-5494cf88f9 to 1
+----
+
+Kubernetes cannot create the desired amount of replicas. Furthermore, let's check the state of the pod by running:
+
+[.console-input]
+[source,bash]
+----
+kubectl get pod
+----
+
+[.console-output]
+[source,text]
+----
+NAME                         READY   STATUS             RESTARTS   AGE
+hello-fix-5494cf88f9-xp78b   0/1     ImagePullBackOff   0          7m56s
+----
+
+
+[#imagepullbackoff] 
+== Fixing ImagePullBackOff 
+
+The `ImagePullBackOff` error appears when Kubernetes isn't able to retrieve the image for one of the containers of the Pod.
+There are four common causes for this error:
+
+** You specified a tag that does not exist for the image.
+** The image name is invalid — for example,you misspelled the name, or the image does not exist yet in the registry.
+** The image you're trying to retrieve belongs to a private registry, and Kubernetes doesn't have the credentials to access it.
+** You’ve exceeded a rate or download limit on the registry. 
+
+Looking at your recent deployment, the first two causes can be excluded. 
+If you look into your https://quay.io account, you will see that the registry
+where your image exists is a private one. 
+
+To securely fix this situation, you should add the credentials to your private registry in a Secret and reference it in your Pods.
+You can create a secret using the following command and replace the values for user and **encrypted** password with your own:
+
+[.console-input]
+[source,bash]
+----
+kubectl create secret docker-registry regcred --docker-server=quay.io \
+    --docker-username=PLEASE_ADD_YOUR_USER_HERE \
+    --docker-password=PLEASE_ADD_ENCRYPTED_PASSWORD_HERE
+----
+
+For your recent deployment to use these credentials, you can add the secret to the `hello-fix` ServiceAccount by using the following command:
+
+[.console-input]
+[source,bash]
+----
+kubectl patch serviceaccount hello-fix -p '{"imagePullSecrets": [{"name": "regcred"}]}'
+----
+
+Lastly, rollout the deployment to make it aware of the changes done at ServiceAccount level:
+[.console-input]
+[source,bash]
+----
+kubectl rollout restart deploy hello-fix
+----
+
+Validate the fix by running:
+[.console-input]
+[source,bash]
+----
+kubectl get pod
+----
+
+[.console-output]
+[source,text]
+----
+NAME                        READY   STATUS    RESTARTS   AGE
+hello-fix-d876fd8dd-dkfv6   1/1     Running   0          82s
+----
+
+Now you can cleanup the scenario:
+[.console-input]
+[source,bash]
+----
+kubectl delete deploy hello-fix
+kubectl delete svc hello-fix
+kubectl delete ingress hello-fix
+----
+
+[#crashloopbackoff]
+== Fixing CrashLoopBackOff
+
+When a container cannot start Kubernetes shows its status as having a CrashLoopBackOff error. CrashLoopBackOff is a runtime error and 
+shows that something is wrong with the container even before it starts.
+
+Let's deploy again to Kubernetes using a different file:
+
+[.console-input]
+[source,bash]
+----
+kubectl apply -f apps/kubefiles/deploy-eager.yaml
+----
+
+Now issue a command to check the status of the pods:
+[.console-input]
+[source,bash]
+----
+kubectl get pods
+----
+
+The output should be similar to:
+[.console-output]
+[source,text]
+----
+NAME                         READY   STATUS      RESTARTS   AGE
+hello-fix-5945856c46-rjfj7   1/1     Running     0          20s
+----
+
+If you try the same command again, the output will be similar to this:
+
+[.console-output]
+[source,text]
+----
+NAME                         READY   STATUS      RESTARTS     AGE
+hello-fix-5945856c46-rjfj7   1/1     Running     1 (3s ago)   23s
+----
+
+If you check again the status of the pods, you will notice more restarts have happened:
+
+[.console-output]
+[source,text]
+----
+NAME                         READY   STATUS             RESTARTS     AGE
+hello-fix-85bf986b8d-jvw9k   0/1     CrashLoopBackOff   3 (3s ago)   68s
+----
+
+and that CrashLoopBackOff error is shown. Next, you should try and retrieve the logs from that container to investigate why it failed using the following command:
+
+[.console-input]
+[source,bash]
+----
+kubectl logs hello-fix-85bf986b8d-jvw9k --previous
+----
+
+[.console-output]
+[source,text]
+----
+__  ____  __  _____   ___  __ ____  ______
+--/ __ \/ / / / _ | / _ \/ //_/ / / / __/
+-/ /_/ / /_/ / __ |/ , _/ ,< / /_/ /\ \
+--\___\_\____/_/ |_/_/|_/_/|_|\____/___/
+2022-05-30 10:02:32,043 INFO  [io.qua.sma.ope.run.OpenApiRecorder] (main) Default CORS properties will be used, please use 'quarkus.http.cors' properties instead
+2022-05-30 10:02:32,707 INFO  [io.quarkus] (main) hello-fix 1.0.0-SNAPSHOT on JVM (powered by Quarkus 2.9.1.Final) started in 2.881s. Listening on: http://0.0.0.0:8080
+2022-05-30 10:02:32,707 INFO  [io.quarkus] (main) Profile prod activated.
+2022-05-30 10:02:32,708 INFO  [io.quarkus] (main) Installed features: [agroal, cdi, hibernate-orm, hibernate-orm-panache, jdbc-mariadb, kubernetes, narayana-jta, rest-client-reactive, rest-client-reactive-jsonb, resteasy-reactive, smallrye-context-propagation, smallrye-health, smallrye-openapi, vertx]
+2022-05-30 10:02:44,224 INFO  [io.quarkus] (Shutdown thread) hello-fix stopped in 0.047s
+----
+
+The output though shows nothing wrong with the way the application works, so something might not be configured well for this container.
+Let's inspect a bit the content of _apps/kubefiles/deploy-eager.yaml_:
+[.console-input]
+[source, yaml]
+.deploy-eager.yaml
+----
+include::example$deploy-eager.yaml[]
+----
+
+<1> Wait for `initialDelaySeconds`
+<2> Perform check and wait `timeoutSeconds` for a timeout for successful response.
+<3> If the number of continued successes is greater than `successThreshold` return success.
+<4> If the number of continued failures is greater than `failureThreshold` return failure otherwise wait `periodSeconds` and start a new check.
+
+The container is not healthy and thus the liveness probe failure triggers its restart. And this is caused because the liveness check path is `/q/health/live` (and not `/q/health/liv`).
+Let's patch the deployment and fix it:
+
+[.console-input]
+[source,bash]
+----
+kubectl patch deploy hello-fix --type='json' -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/livenessProbe/httpGet/path", "value":"/q/health/live"}]'
+----
+
+If you check the state of the deployment using the following the command:
+[.console-input]
+[source,bash]
+----
+kubectl get pods
+----
+
+The output no longer shows restarts:
+[.console-output]
+[source,text]
+----
+NAME                         READY   STATUS      RESTARTS   AGE
+hello-fix-565bc44644-b6j7m   1/1     Running     0          75s
+----
+
+Now you can cleanup the scenario:
+[.console-input]
+[source,bash]
+----
+kubectl delete deploy hello-fix
+kubectl delete svc hello-fix
+kubectl delete ingress hello-fix
+----
+
+[#runcontainererror]
+== Fixing CreateContainerConfigError
+
+CreateContainerConfigError is another runtime error that appears when the container is unable to start, 
+even before the application inside the container starts.
+
+Let's observe closely such a situation and see how it can be fixed. Firstly, deploy `hello-fix` microservice again using the following command:
+
+[.console-input]
+[source,bash]
+----
+kubectl apply -f apps/kubefiles/deploy-rce.yaml
+----
+
+Once deployed, please check the status of the pod using the command:
+
+[.console-input]
+[source,bash]
+----
+kubectl get pods
+----
+
+The output would be similar to:
+
+[.console-output]
+[source,text]
+----
+NAME                         READY   STATUS                       RESTARTS   AGE
+hello-fix-7c5fffc8c8-j2h8g   0/1     CreateContainerConfigError   0          20s
+----
+
+The error message `CreateContainerConfigError` is usually due to misconfiguration such as:
+
+* Mounting a not-existent volume such as ConfigMap or Secrets.
+* Mounting a read-only volume as read-write.
+
+To inspect and analyse the errors, let's issue another command:
+
+[.console-input]
+[source,bash]
+----
+kubectl describe pod hello-fix-7c5fffc8c8-j2h8g 
+----
+
+The last part of the output will contain the events related to this pod:
+[.console-output]
+[source,text]
+----
+Events:
+Type     Reason          Age                    From               Message
+----     ------          ----                   ----               -------
+Normal   Scheduled       5m41s                  default-scheduler  Successfully assigned anasandbox-dev/hello-fix-7c5fffc8c8-j2h8g to ip-10-0-209-21.us-east-2.compute.internal
+Normal   AddedInterface  5m40s                  multus             Add eth0 [10.129.6.133/23] from openshift-sdn
+Normal   Pulled          5m40s                  kubelet            Successfully pulled image "quay.io/rhdevelopers/hello-fix:1.0.0" in 275.599451ms
+Normal   Pulled          5m39s                  kubelet            Successfully pulled image "quay.io/rhdevelopers/hello-fix:1.0.0" in 249.074903ms
+Normal   Pulled          5m38s                  kubelet            Successfully pulled image "quay.io/rhdevelopers/hello-fix:1.0.0" in 257.866213ms
+Normal   Pulled          5m24s                  kubelet            Successfully pulled image "quay.io/rhdevelopers/hello-fix:1.0.0" in 254.278022ms
+Normal   Pulled          5m12s                  kubelet            Successfully pulled image "quay.io/rhdevelopers/hello-fix:1.0.0" in 241.181607ms
+Normal   Pulled          4m58s                  kubelet            Successfully pulled image "quay.io/rhdevelopers/hello-fix:1.0.0" in 247.172925ms
+Normal   Pulled          4m45s                  kubelet            Successfully pulled image "quay.io/rhdevelopers/hello-fix:1.0.0" in 239.601958ms
+Warning  Failed          4m30s (x8 over 5m40s)  kubelet            Error: secret "maria" not found
+Normal   Pulled          4m30s                  kubelet            Successfully pulled image "quay.io/rhdevelopers/hello-fix:1.0.0" in 236.199003ms
+Normal   Pulling         28s (x26 over 5m40s)   kubelet            Pulling image "quay.io/rhdevelopers/hello-fix:1.0.0"
+----
+
+One of the lines above contains a warning and the message _Error: secret "maria" not found_. 
+This secret is needed in order to retrieve database credentials and thus the application to connect to the MariaDB instance.
+Let's see if this secret exists by running the command:
+[.console-input]
+[source,bash]
+----
+kubectl get secret maria
+----
+
+The response received for this command is :
+[.console-output]
+[source,text]
+----
+Error from server (NotFound): secrets "maria" not found
+----
+
+Furthermore, let's inspect what secrets are available using the following command:
+[.console-input]
+[source,bash]
+----
+kubectl get secrets
+----
+
+[.console-output]
+[source,text]
+----
+NAME                                   TYPE                                  DATA   AGE
+mariadb                                Opaque                                4      4d23h
+mariadb-ephemeral-parameters-vrtxp     Opaque                                8      4d23h
+regcred                                kubernetes.io/dockerconfigjson        1      2d23h
+sh.helm.release.v1.mariadb1.v1         helm.sh/release.v1                    1      3d1h
+----
+
+It looks like the `mariadb` secret exists and to fix the deployment we can use again a `patch` command:
+[.console-input]
+[source,bash]
+----
+kubectl patch deploy hello-fix --type='json' -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/envFrom/0/secretRef/name", "value":"mariadb"}]'
+----
+
+You can check the state of the deployment using the following the command:
+[.console-input]
+[source,bash]
+----
+kubectl get pods
+----
+
+The failing pod is terminated while a new healthy instance is up an running:
+[.console-output]
+[source,text]
+----
+NAME                         READY   STATUS        RESTARTS   AGE
+hello-fix-565bc44644-s4ft5   1/1     Running       0          4s
+hello-fix-7c5fffc8c8-j2h8g   0/1     Terminating   0          18m
+----
+
+Now you can cleanup the scenario:
+[.console-input]
+[source,bash]
+----
+kubectl delete deploy hello-fix
+kubectl delete svc hello-fix
+kubectl delete ingress hello-fix
+----
+
+[#pending]
+== Overcoming Pending state
+
+The status of a `Pod` is reflected in the `PodStatus` object, which has a phase field. The possible values for the phase field are:
+
+[cols="2*.",options="header,+attributes"]
+|===
+|**Value**|**Description**
+|Pending	|The Pod has been accepted by the Kubernetes cluster, but one or more of the containers has not been set up and made ready to run.
+|Running	|The Pod has been bound to a node, all the containers have been created and At least one container is still running.
+|Succeeded	|All containers in the Pod have terminated in success, and will not be restarted.
+|Failed	|All containers in the Pod have terminated, and at least one container has terminated in failure.
+|Unknown	|The state of the Pod could not be obtained.
+|===
+
+Let's start this exercise by deploying again `hello-fix` using the command:
+
+[.console-input]
+[source,bash]
+----
+kubectl apply -f apps/kubefiles/deploy-claim.yaml
+----
+
+Once deployed, please check the status of the pod using the command:
+
+[.console-input]
+[source,bash]
+----
+kubectl get pods
+----
+
+The output would be similar to:
+
+[.console-output]
+[source,text]
+----
+NAME                         READY   STATUS      RESTARTS   AGE
+hello-fix-6c744dcc77-s6s8d   0/1     Pending     0          6s
+----
+
+To inspect and analyse the state of the pod, let's issue another command:
+
+[.console-input]
+[source,bash]
+----
+kubectl describe pod hello-fix-6c744dcc77-s6s8d
+----
+
+The output will contain the following details:
+[.console-output]
+[source,text]
+----
+Events:
+Type     Reason             Age               From                Message
+----     ------             ----              ----                -------
+Warning  FailedScheduling   29s               default-scheduler   0/10 nodes are available: 10 persistentvolumeclaim "xf" not found.
+Normal   NotTriggerScaleUp  8s (x2 over 21s)  cluster-autoscaler  pod didn't trigger scale-up: 1 persistentvolumeclaim "maria-pvclaim" not found
+----
+
+If you would like to obtain only the events and sort them by creation timestamp, you can use also the following command:
+
+[.console-input]
+[source,bash]
+----
+kubectl get events --sort-by=.metadata.creationTimestamp
+----
+
+Furthermore, when you need to filter by event type you should use the command bellow:
+
+[.console-input]
+[source,bash]
+----
+kubectl get events -–field-selector type=Warning
+----
+Since the deployment cannot find the persistentvolumeclaim "maria-pvclaim", let's check its existence:
+
+[.console-input]
+[source,bash]
+----
+kubectl get pvc maria-pvclaim
+----
+
+[.console-output]
+[source,text]
+----
+Error from server (NotFound): persistentvolumeclaims "maria-pvclaim" not found
+----
+
+To fix this situation we can easily create the PersistentVolumeClaim using the command:
+
+[.console-input]
+[source,bash]
+----
+kubectl apply -f apps/kubefiles/maria-pvclaim.yaml
+----
+
+Once deployed, please check the status of the pod using the command:
+
+[.console-input]
+[source,bash]
+----
+kubectl get pods
+----
+
+The output would be similar to:
+
+[.console-output]
+[source,text]
+----
+NAME                         READY   STATUS      RESTARTS   AGE
+hello-fix-6c744dcc77-s6s8d   1/1     Running     0          10m
+----
+
+Now you can cleanup the scenario:
+[.console-input]
+[source,bash]
+----
+kubectl delete deploy hello-fix
+kubectl delete svc hello-fix
+kubectl delete ingress hello-fix
+----
+
+[#ready]
+== Running and not Ready
+
+When a microservice depends on external configurations (available in Secrets and ConfigMaps), it can happen for a pod to be Running but not accepting any request.
+If the Readiness probe is failing, the Pod isn't attached to the Service, and no traffic is forwarded to that instance.
+
+Let's take a closer look to such a scenario by firstly deploying a new version of the `hello-fix` microservice:
+[.console-input]
+[source,bash]
+----
+kubectl apply -f apps/kubefiles/deploy-not-ready.yaml
+----
+
+Once deployed, please check the status of the pod using the command:
+
+[.console-input]
+[source,bash]
+----
+kubectl get pods
+----
+
+The output would be similar to:
+
+[.console-output]
+[source,text]
+----
+NAME                         READY   STATUS      RESTARTS   AGE
+hello-fix-644f85ff64-flx5f   0/1     Running     0          3m21s
+----
+
+To inspect and analyse the state of the pod, let's issue another command:
+
+[.console-input]
+[source,bash]
+----
+kubectl get events --sort-by=.metadata.creationTimestamp
+----
+
+The output will contain the following details:
+[.console-output]
+[source,text]
+----
+LAST SEEN   TYPE      REASON                        OBJECT                                  MESSAGE
+6m37s       Normal    Pulling                       pod/hello-fix-644f85ff64-flx5f          Pulling image "quay.io/rhdevelopers/hello-fix:2.0.0"
+6m37s       Normal    EnsuredLoadBalancer           service/hello-fix                       Ensured load balancer
+5m42s       Warning   Unhealthy                     pod/hello-fix-644f85ff64-flx5f          Readiness probe failed: Get "http://10.128.7.126:80/q/health/ready": dial tcp 10.128.7.126:80: connect: connection refused
+----
+
+A failing Readiness probe is an application-specific error.
+Let's check if the path is valid by starting in Dev Mode the microservice located in _apps/hello-fix_:
+
+[.console-input]
+[source,bash]
+----
+mvn quarkus:dev
+----
+
+Now go in a browser and access http://localhost:8080/q/health/ready and observe the response:
+[.console-output]
+[source,json]
+----
+{
+    "status": "UP",
+    "checks": [
+        {
+            "name": "Database connections health check",
+            "status": "UP"
+        },
+        {
+            "name": "external-url-check",
+            "status": "UP",
+            "data": {
+                "host": "GET https://www.fruityvice.com/api/fruit/all"
+            }
+        }
+    ]
+}
+----
+
+In this case, two dependencies (to the database and to the external service) are checked on the same path. 
+If one is failing, the pod will not serve any request.
+
+The `hello-fix` microservice was developed iteratively and there two image tags available for it: 1.0.0 and 2.0.0.
+The image with tag 1.0.0 makes a readiness assessment only for the database. 
+To further troubleshoot this situation, let's set the image used by current deployment to 1.0.0:
+
+[.console-input]
+[source,bash]
+----
+kubectl set image deployment hello-fix hello-fix=quay.io/rhdevelopers/hello-fix:1.0.0
+----
+
+Once deployed, please check the status of the pod using the command:
+
+[.console-input]
+[source,bash]
+----
+kubectl get pods
+----
+
+The output would be similar to:
+
+[.console-output]
+[source,text]
+----
+NAME                         READY   STATUS      RESTARTS   AGE
+hello-fix-6dcdfd67fc-w2t5p   1/1     Running     0          35s
+----
+
+Let's rollback the deployment to the previous image version:
+
+[.console-input]
+[source,bash]
+----
+kubectl set image deployment hello-fix hello-fix=quay.io/rhdevelopers/hello-fix:2.0.0
+----
+
+By running `kubectl get pods` command the output will look similarly to this one:
+
+[.console-output]
+[source,text]
+----
+NAME                         READY   STATUS      RESTARTS   AGE
+hello-fix-6dcdfd67fc-w2t5p   1/1     Running     0          11m
+hello-fix-8b8949b46-dhtl6    0/1     Running     0          48s
+----
+
+Kubernetes will keep the pod that was running correctly previously while the other one overcomes its issues.
+The pod with the state not ready has its readiness failing due to the second probe check, the one named _external-url-check_. 
+And this happens only in production, where the configuration is externalized. Let's inspect the _apps/kubefiles/deploy-not-ready.yaml_:
+
+[.console-input]
+[source, yaml]
+.deploy-not-ready.yaml
+----
+include::example$deploy-not-ready.yaml[]
+----
+
+The url to the external API is provided via an environment variable that searches for it into the ConfigMap `hello-fix`.
+Let's get the content of the ConfigMap by running the command:
+
+[.console-input]
+[source,bash]
+----
+kubectl get cm hello-fix -o yaml
+----
+
+[.console-output]
+[source,yaml]
+----
+apiVersion: v1
+data:
+  url: http
+kind: ConfigMap
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"v1","data":{"url":"http"},"kind":"ConfigMap","metadata":{"annotations":{},"name":"hello-fix","namespace":"anasandbox-dev"}}
+  creationTimestamp: "2022-05-30T12:45:21Z"
+  name: hello-fix
+  namespace: anasandbox-dev
+  resourceVersion: "1140097949"
+  uid: ecef068b-5ca6-4825-afed-6028a9ce45cb
+----
+
+The url given there is not a valid. Let's replace it with the correct one by running the command:
+
+[.console-input]
+[source,bash]
+----
+kubectl replace -f apps/kubefiles/hello-fix-cm.yaml
+----
+
+Now let's rollout the deployment to make it aware of the change:
+
+[.console-input]
+[source,bash]
+----
+kubectl rollout restart deploy hello-fix
+----
+
+Once deployed, please check the status of the pod using the command:
+
+[.console-input]
+[source,bash]
+----
+kubectl get pods
+----
+
+The output would be similar to:
+
+[.console-output]
+[source,text]
+----
+NAME                         READY   STATUS      RESTARTS   AGE
+hello-fix-6dcdfd67fc-w2t5p   1/1     Running     0          35s
+----
+
+Please delete previously used Kubernetes resources:
+
+[.console-input]
+[source,bash]
+----
+kubectl delete deploy hello-fix
+kubectl delete svc hello-fix
+kubectl delete ingress hello-fix
+kubectl delete cm hello-fix
+kubectl delete pvc maria-pvclaim
+----
+

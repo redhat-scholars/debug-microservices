@@ -1,0 +1,69 @@
+#[...]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    app.quarkus.io/commit-id: 91d4fef5457795ed2a1a38daeeaee4837254b390
+    app.quarkus.io/build-timestamp: 2022-05-30 - 12:42:01 +0000
+  labels:
+    app.kubernetes.io/version: 2.0.0
+    app.kubernetes.io/name: hello-fix
+  name: hello-fix
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/version: 2.0.0
+      app.kubernetes.io/name: hello-fix
+  template:
+    metadata:
+      annotations:
+        app.quarkus.io/commit-id: 91d4fef5457795ed2a1a38daeeaee4837254b390
+        app.quarkus.io/build-timestamp: 2022-05-30 - 12:42:01 +0000
+      labels:
+        app.kubernetes.io/version: 2.0.0
+        app.kubernetes.io/name: hello-fix
+    spec:
+      containers:
+        - env:
+            - name: KUBERNETES_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: HELLO_FIX
+              valueFrom:
+                configMapKeyRef:
+                  key: url
+                  name: hello-fix
+          envFrom:
+            - secretRef:
+                name: mariadb
+          image: quay.io/rhdevelopers/hello-fix:2.0.0
+          imagePullPolicy: Always
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /q/health/live
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 0
+            periodSeconds: 30
+            successThreshold: 1
+            timeoutSeconds: 10
+          name: hello-fix
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /q/health/ready
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 0
+            periodSeconds: 30
+            successThreshold: 1
+            timeoutSeconds: 10
+#[...]

@@ -1,7 +1,20 @@
-* xref:01-setup.adoc[1. Setup]
+* xref:01-setup.adoc[1.Setup]
 ** xref:01-setup.adoc#prerequisite[Prerequisites]
 ** xref:01-setup.adoc#minikube[Setup Minikube]
+** xref:01-setup.adoc#proddbsetup[Setup the database for production]
 
-* xref:02-deploy.adoc[2. Deploy Service]
-** xref:02-deploy.adoc#package[Build Service]
-** xref:02-deploy.adoc#deploy[Deploy Dervice]
+* xref:02-deploy.adoc[2.Troubleshooting Deployments]
+** xref:02-deploy.adoc#quarkusremotedev[Quarkus remote development]
+** xref:02-deploy.adoc#deploy[Deploy the microservice]
+** xref:02-deploy.adoc#imagepullbackoff[Fixing ImagePullBackOff]
+** xref:02-deploy.adoc#crashloopbackoff[Fixing CrashLoopBackOff]
+** xref:02-deploy.adoc#runcontainererror[Fixing CreateContainerConfigError]
+** xref:02-deploy.adoc#pending[Overcoming Pending state]
+** xref:02-deploy.adoc#ready[Running and not Ready]
+
+* xref:03-service.adoc[3.Fixing Traffic Issues]
+** xref:03-service.adoc#wrongtarget[Troubleshooting Services]
+** xref:03-service.adoc#incorrectingress[Troubleshooting Ingress]
+
+* xref:04-job.adoc[4.Troubleshooting Scheduled Jobs]
+

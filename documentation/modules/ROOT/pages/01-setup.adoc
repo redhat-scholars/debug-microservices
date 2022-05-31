@@ -7,8 +7,44 @@ include::_attributes.adoc[]
 include::https://raw.githubusercontent.com/redhat-developer-demos/rhd-tutorial-common/master/prerequisites-kubernetes.adoc[]
 |===
 
-include::https://raw.githubusercontent.com/redhat-developer-demos/rhd-tutorial-common/master/optional-requisites.adoc[]
+//include::https://raw.githubusercontent.com/redhat-developer-demos/rhd-tutorial-common/master/optional-requisites.adoc[]
+//|===
+
+
+== IDE
+
+You can use any IDE for this tutorial but if you didn't try it before, we recommend https://code.visualstudio.com/download[VS Code, window="_blank"] with the https://marketplace.visualstudio.com/items?itemName=redhat.java[Language Support for Java(TM) by Red Hat, window="_blank"] and the https://marketplace.visualstudio.com/items?itemName=redhat.vscode-quarkus[Quarkus, window="_blank"] extensions.
+
+Then you need to clone the repo with all the YAML files required for running the tutorial:
+
+[.console-input]
+[source,bash]
+----
+git clone https://github.com/redhat-scholars/debug-microservices.git
+----
+
+You will also need:
+
+[cols="4*^,4*.",options="header,+attributes"]
 |===
+|**Tool**|**macOS**|**Fedora**|**windows**
+
+| **Java 11**
+| `brew tap AdoptOpenJDK/openjdk && brew cask install adoptopenjdk11`
+| `dnf install java-11-openjdk.x86_64`
+| https://adoptopenjdk.net[Windows] (Make sure you set the `JAVA_HOME` environment variable and add `%JAVA_HOME%\bin` to your `PATH`)
+|===
+
+== Red Hat Quay.io access
+
+To replicate some of the steps inside this tutorial, you will need access to a container registry.
+You can get free access to https://quay.io by having a Red Hat user account.
+
+You can create a Red Hat account by accessing https://developers.redhat.com/, click `Login` in the upper right corner and follow the registration steps:
+
+[.mt-4.center]
+image::rhaccount.png[Register Image,400,400,align="center"]
+
 
 [#minikube]
 == Setup Kubernetes
@@ -17,13 +53,61 @@ include::https://raw.githubusercontent.com/redhat-developer-demos/rhd-tutorial-c
 
 include::https://raw.githubusercontent.com/redhat-developer-demos/rhd-tutorial-common/master/kubernetes-setup.adoc[]
 
-And then you are ready for start using Kubernetes:
+And then you are ready for start using Kubernetes.
 
-image::kubelogo.png[]
+[#proddbsetup]
+== Setup the database for production
 
-[#downloadtutorial]
-== Get tutorial sources
+For local development, Quarkus based microservices can use DevServices to bootstrap the database setup.
+In production mode, you will need a database instance.
 
-:tutorial-url: https://github.com/redhat-developer-demos/rhd-tutorial-common.git
-:folder: my_folder
-include::https://raw.githubusercontent.com/redhat-developer-demos/rhd-tutorial-common/master/download-sources.adoc[]
+[tabs]
+====
+Minikube  Installation::
++
+--
+[cols="4*^,4*.",options="header,+attributes"]
+|===
+|**Tool**|**macOS**|**Fedora**|**windows**
+
+| https://github.com/helm/helm/releases[helm]
+| `brew install helm`
+| `sudo snap install helm --classic`
+| https://get.helm.sh/helm-v3.6.3-windows-amd64.zip[Download] or `choco install kubernetes-helm`
+|===
+
+To install the database, please run the following command in the command line:
+
+[.console-input]
+[source,bash]
+----
+helm install mariadb bitnami/mariadb --set auth.username=mariadb --set auth.password=mariadb
+----
+
+The Kubernetes Secret `mariadb` contains the credentials needed by the microservice.
+
+--
+Red Hat Developer Sandbox::
++
+--
+Please click on `+Add` option from the menu of the Web UI of your Developer Sandbox.
+Go to `Developer Catalog` column and click on `Database`. Here type `mariadb` and you will see two templates:
+
+[.mt-4.center]
+image::templates.png[Templates,400,400,align="center"]
+
+Select the template with ephemeral and fill in `mariadb` as value for all the entries:
+
+[.mt-4.center]
+image::mariadb.png[Templates,400,400,align="center"]
+
+Namespace:: openshift
+Database Service name:: mariadb
+MariaDB Connection Username:: mariadb
+MariaDB Connection Password:: mariadb
+MariaDB Database name:: mariadb
+
+Finally, click on `Create` button and wait until the database is up and running.
+
+--
+====

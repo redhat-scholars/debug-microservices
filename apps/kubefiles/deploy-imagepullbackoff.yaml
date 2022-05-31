@@ -1,0 +1,90 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    app.quarkus.io/commit-id: 91d4fef5457795ed2a1a38daeeaee4837254b390
+    app.quarkus.io/build-timestamp: 2022-05-27 - 10:06:28 +0000
+  labels:
+    app.kubernetes.io/name: hello-fix
+    app.kubernetes.io/version: 1.0.0-SNAPSHOT
+  name: hello-fix
+spec:
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+  selector:
+    app.kubernetes.io/name: hello-fix
+    app.kubernetes.io/version: 1.0.0-SNAPSHOT
+  type: LoadBalancer
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    app.quarkus.io/commit-id: 91d4fef5457795ed2a1a38daeeaee4837254b390
+    app.quarkus.io/build-timestamp: 2022-05-27 - 10:06:28 +0000
+  labels:
+    app.kubernetes.io/version: 1.0.0-SNAPSHOT
+    app.kubernetes.io/name: hello-fix
+  name: hello-fix
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/version: 1.0.0-SNAPSHOT
+      app.kubernetes.io/name: hello-fix
+  template:
+    metadata:
+      annotations:
+        app.quarkus.io/commit-id: 91d4fef5457795ed2a1a38daeeaee4837254b390
+        app.quarkus.io/build-timestamp: 2022-05-27 - 10:06:28 +0000
+      labels:
+        app.kubernetes.io/version: 1.0.0-SNAPSHOT
+        app.kubernetes.io/name: hello-fix
+    spec:
+      containers:
+        - env:
+            - name: KUBERNETES_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          envFrom:
+            - secretRef:
+                name: mariadb
+          image: quay.io/<PLEASE_ADD_YOUR_USER_HERE>/hello-fix:1.0.0-SNAPSHOT
+          imagePullPolicy: Always
+          name: hello-fix
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+      serviceAccountName: hello-fix
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    app.quarkus.io/commit-id: 91d4fef5457795ed2a1a38daeeaee4837254b390
+    app.quarkus.io/build-timestamp: 2022-05-27 - 10:06:28 +0000
+  labels:
+    app.kubernetes.io/name: hello-fix
+    app.kubernetes.io/version: 1.0.0-SNAPSHOT
+  name: hello-fix
+spec:
+  rules:
+    - http:
+        paths:
+          - backend:
+              service:
+                name: hello-fix
+                port:
+                  name: http
+            path: /
+            pathType: Prefix
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: hello-fix

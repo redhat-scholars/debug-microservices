@@ -1,0 +1,273 @@
+= Troubleshooting Scheduled Jobs
+include::_attributes.adoc[]
+
+You can utilize Job and CronJob Kubernetes resources when you need to have a containerized application ready to automate tasks that need to be performed on a regular basis, without any user intervention.
+In this section we will take a closer look on how to fix troubles that may appear when misusing these of resources.
+
+Before proceeding to deploy a CronJob, let's inspect its content to figure out its scope:
+
+[.console-input]
+[source, yaml]
+.great-job.yaml
+----
+include::example$great-job.yaml[]
+----
+<1> Run the job every 2 minutes.
+<2> The number of successfully finished jobs to retain.
+<3> The number of failed finished jobs to retain.
+<4> Specifies how to treat concurrent executions of a Job. The default value is `Allow` that allows CronJobs to run concurrently. 
+Other values are `Forbid`: forbids concurrent runs, skipping next run if previous run hasn't finished yet; and `Replace` that cancels currently running job and replaces it with a new one.
+
+Next, let's deploy the CronJob by running the following command:
+
+[.console-input]
+[source,bash]
+----
+kubectl apply -f apps/kubefiles/great-job.yaml
+----
+
+You can check the status of your recently deployed resource by running:
+[.console-input]
+[source,bash]
+----
+kubectl describe cronjob great-cron-job
+----
+
+The output will be similar to:
+[.console-output]
+[source,text]
+----
+Name:                          great-cron-job
+Namespace:                     user-dev
+Labels:                        <none>
+Annotations:                   <none>
+Schedule:                      */2 * * * *
+Concurrency Policy:            Forbid
+Suspend:                       False
+Successful Job History Limit:  1
+Failed Job History Limit:      1
+Starting Deadline Seconds:     <unset>
+Selector:                      <unset>
+Parallelism:                   <unset>
+Completions:                   <unset>
+Pod Template:
+  Labels:  <none>
+  Containers:
+   test-job:
+    Image:      busybox:latest
+    Port:       <none>
+    Host Port:  <none>
+    Args:
+      /bin/wget
+      http://www.bbc.co.uk
+    Environment:     <none>
+    Mounts:          <none>
+  Volumes:           <none>
+Last Schedule Time:  Tue, 31 May 2022 15:46:00 +0200
+Active Jobs:         great-cron-job-27566746
+Events:
+  Type    Reason            Age   From                Message
+  ----    ------            ----  ----                -------
+  Normal  SuccessfulCreate  54s   cronjob-controller  Created job great-cron-job-27566746
+----
+
+After two minutes, you will notice that a Job resource is created based on  the `JobTemplate` of the CronJob. Pods will created based on the `Template` specifications.
+This job should successfully create a Job resource and a Pod should successfully run to completion.
+
+Let's check the state of the Pods after 2 minutes:
+[.console-input]
+[source,bash]
+----
+kubectl get pods -o wide
+----
+
+By looking at the output, you will observe that the execution always terminates in error a continuous attempt to run the Job is made:
+[.console-output]
+[source,text]
+----
+NAME                            READY   STATUS    RESTARTS   AGE     IP            NODE                                        NOMINATED NODE   READINESS GATES
+great-cron-job-27566746-746fs   0/1     Error     0          91s     10.131.0.86   ip-10-0-205-44.us-east-2.compute.internal   <none>           <none>
+great-cron-job-27566746-cwhjv   0/1     Error     0          62s     10.131.0.91   ip-10-0-205-44.us-east-2.compute.internal   <none>           <none>
+great-cron-job-27566746-dwglz   0/1     Error     0          72s     10.131.0.90   ip-10-0-205-44.us-east-2.compute.internal   <none>           <none>
+great-cron-job-27566746-fwfxn   0/1     Error     0          82s     10.131.0.89   ip-10-0-205-44.us-east-2.compute.internal   <none>           <none>
+great-cron-job-27566746-gv46r   0/1     Error     0          30s     10.131.0.99   ip-10-0-205-44.us-east-2.compute.internal   <none>           <none>
+great-cron-job-27566746-plcxb   0/1     Error     0          40s     10.131.0.98   ip-10-0-205-44.us-east-2.compute.internal   <none>           <none>
+great-cron-job-27566746-wzvdc   0/1     Error     0          51s     10.131.0.93   ip-10-0-205-44.us-east-2.compute.internal   <none>           <none>
+----
+
+However, despite having set to `Forbid` concurrent executions of Jobs, multiple attempts to successfully ran those Jobs are being made.
+These operations consume memory and CPU from the Kubernetes cluster and trigger an overload of resources from the node they ran on.
+
+To stop this problematic behavior and be able to investigate what is going on, you should suspend the CronJob by running:
+
+[.console-input]
+[source,bash]
+----
+kubectl patch cronjob great-cron-job -p '{"spec": { "suspend": true }}' 
+----
+
+Now that your CronJob is suspended, you should check for Warning or Error events:
+
+[.console-input]
+[source,bash]
+----
+kubectl get events –-field-selector type=Warning --sort-by=.metadata.creationTimestamp
+----
+
+[.console-output]
+[source,text]
+----
+LAST SEEN   TYPE      REASON                 OBJECT                          MESSAGE
+3m32s       Warning   BackoffLimitExceeded   job/great-cron-job-27566746     Job has reached the specified backoff limit
+91s         Warning   BackoffLimitExceeded   job/great-cron-job-27566748     Job has reached the specified backoff limit
+----
+
+The warning is saying that each Job resource created by `great-cron-job` has reached the specified backoff limit. 
+//You can also take a look at the logs by running:
+//
+//[.console-input]
+//[source,bash]
+//----
+//kubectl logs cronjob --previous
+//----
+//
+//You can see an output similar to:
+//
+//[.console-output]
+//[source,text]
+//----
+//----
+
+You keep seeing Pods being created despite that the previous one reaches `Error` phase even if the `backoffLimit` was not set.
+You should use the `spec.backoffLimit` to specify the number of retries before considering a Job as failed. The default value for back-off limit is set to 6.
+
+
+IMPORTANT: Failed Pods associated with a Job are recreated by the Job controller with an exponential back-off delay (10s, 20s, 40s …) capped at six minutes. 
+The back-off count is reset if no new failed Pods appear before the next status check of the Job.
+If a new job is scheduled before Job controller has a chance to recreate a pod, the Job controller starts counting from 1 again.
+
+Let's patch the CronJob with a `backoffLimit` value and see what happens:
+
+[.console-input]
+[source,bash]
+----
+kubectl patch cronjob great-cron-job -p \
+'{"spec":{"suspend": false, "jobTemplate":{"spec":{"backoffLimit":0}}}}'
+----
+
+Wait for 2 minutes and describe the state of the CronJob again by running:
+[.console-input]
+[source,bash]
+----
+kubectl describe cronjob great-cron-job
+----
+
+The output will be similar to:
+[.console-output]
+[source,text]
+----
+Name:                          great-cron-job
+Namespace:                     anasandbox-dev
+Labels:                        <none>
+Annotations:                   <none>
+Schedule:                      */2 * * * *
+Concurrency Policy:            Forbid
+Suspend:                       False
+Successful Job History Limit:  1
+Failed Job History Limit:      1
+Starting Deadline Seconds:     <unset>
+Selector:                      <unset>
+Parallelism:                   <unset>
+Completions:                   <unset>
+Pod Template:
+  Labels:  <none>
+  Containers:
+   test-job:
+    Image:      busybox:latest
+    Port:       <none>
+    Host Port:  <none>
+    Args:
+      /bin/wget
+      http://www.bbc.co.uk
+    Environment:     <none>
+    Mounts:          <none>
+  Volumes:           <none>
+Last Schedule Time:  Tue, 31 May 2022 16:50:00 +0200
+Active Jobs:         <none>
+Events:
+  Type    Reason            Age                    From                Message
+  ----    ------            ----                   ----                -------
+  Normal  SuccessfulCreate  64m                    cronjob-controller  Created job great-cron-job-27566746
+  Normal  SawCompletedJob   63m                    cronjob-controller  Saw completed job: great-cron-job-27566746, status: Failed
+  Normal  SuccessfulCreate  62m                    cronjob-controller  Created job great-cron-job-27566748
+  Normal  SawCompletedJob   61m                    cronjob-controller  Saw completed job: great-cron-job-27566748, status: Failed
+  Normal  SuccessfulDelete  61m                    cronjob-controller  Deleted job great-cron-job-27566746
+  Normal  SuccessfulCreate  2m24s                  cronjob-controller  Created job great-cron-job-27566806
+  Normal  SuccessfulDelete  2m13s                  cronjob-controller  Deleted job great-cron-job-27566748
+  Normal  JobAlreadyActive  2m13s (x2 over 2m21s)  cronjob-controller  Not starting job because prior execution is running and concurrency policy is Forbid
+  Normal  SuccessfulCreate  2m13s                  cronjob-controller  Created job great-cron-job-27566808
+  Normal  SawCompletedJob   2m13s                  cronjob-controller  Saw completed job: great-cron-job-27566806, status: Failed
+  Normal  SawCompletedJob   2m3s                   cronjob-controller  Saw completed job: great-cron-job-27566808, status: Failed
+  Normal  SuccessfulDelete  2m3s                   cronjob-controller  Deleted job great-cron-job-27566806
+  Normal  SuccessfulCreate  21s                    cronjob-controller  Created job great-cron-job-27566810
+  Normal  SawCompletedJob   11s                    cronjob-controller  Saw completed job: great-cron-job-27566810, status: Failed
+  Normal  SuccessfulDelete  11s                    cronjob-controller  Deleted job great-cron-job-27566808
+----
+
+Now, you can observe that despite the failure experienced when running the Job, the additional 6 trials are no longer there.
+
+If you like to further troubleshoot the failed state, you get the names of the Pods created earlier:
+
+[.console-input]
+[source,bash]
+----
+kubectl get pods
+----
+
+[.console-output]
+[source,text]
+----
+NAME                            READY   STATUS    RESTARTS   AGE
+great-cron-job-27566904-cbrm8   0/1     Error     0          95s
+----
+
+
+Let's look into the logs of one of the Pods by running:
+
+[.console-input]
+[source,bash]
+----
+kubectl logs great-cron-job-27566904-cbrm8
+----
+
+[.console-output]
+[source,text]
+----
+Connecting to www.bbc.co.uk (146.75.32.81:80)
+Connecting to www.bbc.co.uk (146.75.32.81:443)
+wget: note: TLS certificate validation not implemented
+wget: can't open 'index.html': Permission denied
+----
+
+This shows that the wrong command was given when starting the pod. That can be easily patched with:
+
+[.console-input]
+[source,bash]
+----
+kubectl patch cronjob great-cron-job --type='json' -p='[{"op": "replace", "path": "/spec/jobTemplate/spec/template/spec/containers/0/args",
+"value": [
+  "/bin/sh",
+  "-c",
+  "date;wget --no-check-certificate --spider https://www.bbc.com/"
+]}]'
+----
+
+As a result, the next Job ran will complete successfully.
+
+As a last step, you can cleanup by running:
+
+[.console-input]
+[source,bash]
+----
+kubectl delete cronjob great-cron-job
+----

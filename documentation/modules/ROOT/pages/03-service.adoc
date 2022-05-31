@@ -1,0 +1,298 @@
+= Fixing Traffic Issues
+include::_attributes.adoc[]
+
+The scenarios that we will look into this section are about troubleshooting those situations your Pods are Running and Ready, but you're still unable to receive a response from your application.
+In these situations you should check if the Service is configured correctly.
+
+Services are the Kubernetes resources designed to route the traffic to Pods based on their labels.
+
+
+[#wrongtarget]
+== Troubleshooting Services
+
+Let's start by deploying the microservice using the command:
+
+[.console-input]
+[source,bash]
+----
+kubectl apply -f apps/kubefiles/deploy-another-port.yaml
+----
+
+Once deployed, let's verify if everything is going well by running:
+[.console-input]
+[source,bash]
+----
+kubectl get deploy hello-fix
+----
+
+[.console-output]
+[source,text]
+----
+NAME        READY   UP-TO-DATE   AVAILABLE   AGE
+hello-fix   1/1     1            1           24m
+----
+
+Also, let's check the Service state:
+
+[.console-input]
+[source,bash]
+----
+kubectl get svc hello-fix -o wide
+----
+
+[.console-output]
+[source,text]
+----
+NAME        TYPE           CLUSTER-IP       EXTERNAL-IP                                                               PORT(S)        AGE   SELECTOR
+hello-fix   LoadBalancer   172.30.163.216   a9fc097093e9244f08bd7f3e10195bd2-1198597076.us-east-2.elb.amazonaws.com   80:30258/TCP   25m   app.kubernetes.io/name=hello-fix,app.kubernetes.io/version=2.0.0
+----
+
+To validate the connection between Deployment, Pods and Service you should check how many Pods are targeted by the Service by looking at EndpointSlices. 
+This will show each of the services in the namespace and which pod IP addresses are associated with that service.
+[.console-input]
+[source,bash]
+----
+kubectl get endpointslices -o wide
+----
+
+
+[.console-output]
+[source,text]
+----
+NAME                                  ADDRESSTYPE   PORTS     ENDPOINTS     AGE
+hello-fix-d9fd48749-wpd47              IPv4          9090      10.131.0.241   58s
+----
+
+Next, from inside a container running in the Pod, execute a curl towards the endpoint:
+
+[.console-input]
+[source,bash]
+----
+kubectl exec hello-fix-d9fd48749-wpd47 -- curl 10.131.0.241:9090
+----
+
+You should see an output similar to:
+[.console-output]
+[source,text]
+----
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0curl: (7) Failed to connect to 10.131.0.241 port 9090: Connection refused
+----
+
+Let's take a closer look to the Pod and its definition by running the following command:
+[.console-input]
+[source,bash]
+----
+kubectl get pod hello-fix-d9fd48749-wpd47 -o yaml
+----
+
+In the output, search for how the ports are configured:
+
+[.console-output]
+[source,yaml]
+----
+apiVersion: v1
+kind: Pod
+#[...]
+spec:
+  containers:
+  - env:
+    - name: KUBERNETES_NAMESPACE
+      valueFrom:
+        fieldRef:
+          apiVersion: v1
+          fieldPath: metadata.namespace
+    envFrom:
+    - secretRef:
+        name: mariadb
+    image: quay.io/rhdevelopers/hello-fix:2.0.0
+    imagePullPolicy: Always
+    livenessProbe:
+      failureThreshold: 3
+      httpGet:
+        path: /q/health/live
+        port: 8080
+        scheme: HTTP
+      periodSeconds: 30
+      successThreshold: 1
+      timeoutSeconds: 10
+    name: hello-fix
+    ports:
+    - containerPort: 8080
+      name: http
+      protocol: TCP
+----
+
+It looks like the container exposes its API via port 8080, while the Service resource tries to connect via 9090.
+Let's fix this situation by patching the service resource with the correct port:
+
+[.console-input]
+[source,bash]
+----
+kubectl patch svc hello-fix -p '{"spec": {"ports": [{"port": 80,"targetPort": 8080,"name": "http"}],"type": "LoadBalancer"}}'
+----
+
+Let's execute again the curl command to validate the newly updated port:
+
+[.console-input]
+[source,bash]
+----
+kubectl exec hello-fix-d9fd48749-wpd47 -- curl 10.131.0.241:8080
+----
+
+This time you will receive a valid answer. Now you can cleanup the scenario:
+[.console-input]
+[source,bash]
+----
+kubectl delete deploy hello-fix
+kubectl delete svc hello-fix
+kubectl delete ingress hello-fix
+----
+
+[#incorrectingress]
+== Troubleshooting Ingress
+
+You should look into Ingress configurations whenever you experience the following behaviors:
+
+* All the Pods associated with your Deployment are Running and Ready, while the Service resource distributes traffic to the Pods.
+* You cannot obtain a successful response from the application you deployed.
+
+Let's look into this type of scenario by firstly deploying the microservice:
+[.console-input]
+[source,bash]
+----
+kubectl apply -f apps/kubefiles/deploy-another-name.yaml
+----
+
+Once deployed, let's verify if everything is going well by running:
+[.console-input]
+[source,bash]
+----
+kubectl get deploy hello-fix
+----
+
+[.console-output]
+[source,text]
+----
+NAME        READY   UP-TO-DATE   AVAILABLE   AGE
+hello-fix   1/1     1            1           35s
+----
+
+Also, let's check the Service state:
+
+[.console-input]
+[source,bash]
+----
+kubectl get svc hello-fix -o wide
+----
+
+[.console-output]
+[source,text]
+----
+NAME        TYPE           CLUSTER-IP       EXTERNAL-IP                                                               PORT(S)        AGE   SELECTOR
+hello-fix   LoadBalancer   172.30.187.118   abaa320c215e74b95929c3d9a0de82af-696971893.us-east-2.elb.amazonaws.com   80:32661/TCP   53s   app.kubernetes.io/name=hello-fix,app.kubernetes.io/version=2.0.0
+----
+
+To validate the connection between Deployment, Pods and Service you should Next should check is how many Pods are targeted by the Service by running a describe command and looking at Endpoints:
+[.console-input]
+[source,bash]
+----
+kubectl describe svc hello-fix
+----
+
+[.console-output]
+[source,text]
+----
+Name:                     hello-fix
+Namespace:                anasandbox-dev
+Labels:                   app.kubernetes.io/name=hello-fix
+                          app.kubernetes.io/version=2.0.0
+Annotations:              app.quarkus.io/build-timestamp: 2022-05-30 - 12:42:01 +0000
+                          app.quarkus.io/commit-id: 91d4fef5457795ed2a1a38daeeaee4837254b390
+Selector:                 app.kubernetes.io/name=hello-fix,app.kubernetes.io/version=2.0.0
+Type:                     LoadBalancer
+IP Family Policy:         SingleStack
+IP Families:              IPv4
+IP:                       172.30.187.118
+IPs:                      172.30.187.118
+LoadBalancer Ingress:     abaa320c215e74b95929c3d9a0de82af-696971893.us-east-2.elb.amazonaws.com
+Port:                     http  80/TCP
+TargetPort:               8080/TCP
+NodePort:                 http  32661/TCP
+Endpoints:                10.128.4.21:8080
+Session Affinity:         None
+External Traffic Policy:  Cluster
+Events:
+  Type    Reason                Age   From                Message
+  ----    ------                ----  ----                -------
+  Normal  EnsuringLoadBalancer  64s   service-controller  Ensuring load balancer
+  Normal  EnsuredLoadBalancer   61s   service-controller  Ensured load balancer
+----
+
+In this case the cloud LoadBalancer connects to the application just deployed.
+However, let's look into the Ingress health by running: 
+[.console-input]
+[source,bash]
+----
+kubectl describe ingress hello-fix
+----
+
+[.console-output]
+[source,text]
+----
+Name:             hello-fix
+Labels:           app.kubernetes.io/name=hello-fix
+                  app.kubernetes.io/version=2.0.0
+Namespace:        anasandbox-dev
+Address:          
+Default backend:  default-http-backend:80 (<error: endpoints "default-http-backend" is forbidden: User "anasandbox" cannot get resource "endpoints" in API group "" in the namespace "kube-system">)
+Rules:
+  Host        Path  Backends
+  ----        ----  --------
+  *           
+              /   hellofix:http (<error: endpoints "hellofix" not found>)
+Annotations:  app.quarkus.io/build-timestamp: 2022-05-30 - 12:42:01 +0000
+              app.quarkus.io/commit-id: 91d4fef5457795ed2a1a38daeeaee4837254b390
+----
+
+You can easily spot an error regarding the endpoint as the Ingress searches for `hellofix`, and not `hello-fix`.
+To fix the Ingress resource you can use the following command:
+
+[.console-input]
+[source,bash]
+----
+kubectl patch ingress hello-fix --type='json' -p='[{"op": "replace", "path": "/spec/rules/0/http/paths/0/backend/service/name", "value":"hello-fix"}]'
+----
+
+If you run again:
+
+let's look into the Ingress health by running:
+[.console-input]
+[source,bash]
+----
+kubectl describe ingress hello-fix
+----
+
+The output will show no error:
+[.console-output]
+[source,text]
+----
+Rules:
+  Host        Path  Backends
+  ----        ----  --------
+  *           
+              /   hello-fix:http (10.128.4.21:8080)
+Annotations:  app.quarkus.io/build-timestamp: 2022-05-30 - 12:42:01 +0000
+              app.quarkus.io/commit-id: 91d4fef5457795ed2a1a38daeeaee4837254b390
+Events:       <none>
+----
+
+ Now you can cleanup the scenario:
+[.console-input]
+[source,bash]
+----
+kubectl delete deploy hello-fix
+kubectl delete svc hello-fix
+kubectl delete ingress hello-fix
+----

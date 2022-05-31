@@ -1,0 +1,52 @@
+#[...]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    app.quarkus.io/commit-id: 91d4fef5457795ed2a1a38daeeaee4837254b390
+    app.quarkus.io/build-timestamp: 2022-05-27 - 12:35:51 +0000
+  labels:
+    app.kubernetes.io/version: 1.0.0
+    app.kubernetes.io/name: hello-fix
+  name: hello-fix
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/version: 1.0.0
+      app.kubernetes.io/name: hello-fix
+  template:
+    metadata:
+      annotations:
+        app.quarkus.io/commit-id: 91d4fef5457795ed2a1a38daeeaee4837254b390
+        app.quarkus.io/build-timestamp: 2022-05-27 - 12:35:51 +0000
+      labels:
+        app.kubernetes.io/version: 1.0.0
+        app.kubernetes.io/name: hello-fix
+    spec:
+      containers:
+        - env:
+            - name: KUBERNETES_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          image: quay.io/rhdevelopers/hello-fix:1.0.0
+          imagePullPolicy: Always
+          livenessProbe:
+            httpGet:
+              path: /q/health/liv
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 0 #<1>
+            timeoutSeconds: 10 #<2>
+            successThreshold: 1 #<3>
+            failureThreshold: 3  #<4>
+            periodSeconds: 5
+          name: hello-fix
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+---
+#[...]
