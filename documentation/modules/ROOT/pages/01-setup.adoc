@@ -81,7 +81,9 @@ To install the database, please run the following command in the command line:
 [.console-input]
 [source,bash]
 ----
-helm install mariadb bitnami/mariadb --set auth.username=mariadb --set auth.password=mariadb
+helm repo add bitnami https://charts.bitnami.com/bitnami
+helm install mariadb bitnami/mariadb --set auth.username=mariadb --set auth.password=mariadb \
+--set app.kubernetes.io/managed-by=Helm --set meta.helm.sh/release-name=mariadb 
 ----
 
 The Kubernetes Secret `mariadb` contains the credentials needed by the microservice.

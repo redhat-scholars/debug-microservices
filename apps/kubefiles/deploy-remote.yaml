@@ -87,7 +87,6 @@ spec:
             periodSeconds: 30
             successThreshold: 1
             timeoutSeconds: 10
-      serviceAccountName: hello-fix
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress

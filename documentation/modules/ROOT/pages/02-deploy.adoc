@@ -167,7 +167,7 @@ Secondly, add the extension `quarkus-container-image-jib` to build dockerless co
 [.console-input]
 [source,bash]
 ----
-mvn quarkus:add-extension -Dextensions="io.quarkus:quarkus-kubernetes"
+mvn quarkus:add-extension -Dextensions="io.quarkus:quarkus-kubernetes,io.quarkus:quarkus-container-image-jib"
 ----
 
 Thirdly, to push the container image, you need to authenticate to your container registry:
