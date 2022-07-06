@@ -421,7 +421,9 @@ In production mode, you will need a database instance.</p>
 </div>
 <div class="listingblock console-input">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">helm install mariadb bitnami/mariadb --set auth.username=mariadb --set auth.password=mariadb</code></pre>
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">helm repo add bitnami https://charts.bitnami.com/bitnami
+helm install mariadb bitnami/mariadb --set auth.username=mariadb --set auth.password=mariadb \
+--set app.kubernetes.io/managed-by=Helm --set meta.helm.sh/release-name=mariadb</code></pre>
 </div>
 </div>
 <div class="paragraph">
